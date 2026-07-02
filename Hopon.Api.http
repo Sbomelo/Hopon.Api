@@ -1,0 +1,6 @@
+@Hopon.Api_HostAddress = http://localhost:5101
+
+GET {{Hopon.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
