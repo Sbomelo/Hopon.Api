@@ -20,7 +20,7 @@ public class HoponDbContext : DbContext
     public DbSet<LocationUpdate> LocationUpdates { get; set; } = null!;
     public DbSet<BoardingLog> BoardingLogs { get; set; } = null!;
     public DbSet<NotificationLog> NotificationLogs { get; set; } = null!;
-
+    public DbSet<OtpRequest> OtpRequests { get; set; } = null!;
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         //User
@@ -164,6 +164,15 @@ public class HoponDbContext : DbContext
 
         modelBuilder.Entity<NotificationLog>()
                 .HasIndex(nl => new { nl.UserId, nl.SentAt });
+
+        
+        //OtpRequest
+        modelBuilder.Entity<OtpRequest>(entity =>
+        {
+                entity.HasIndex(o => new {o.PhoneNumber, o.CreatedAt});
+                entity.Property(o => o.PhoneNumber).HasMaxLength(20).IsRequired();
+                entity.Property( o => o.OtpCodeHash).HasMaxLength(255).IsRequired();
+        });
 
     }
 }
