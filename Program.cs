@@ -12,9 +12,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 //REGISTER SERVICES
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+
 builder.Services.AddDbContext<HoponDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("HoponDb")));
 
+builder.Services.AddScoped<TripAccessService, TripAccessService>();
 
 //JWT CONFIGURATION
 var jwtSection = builder.Configuration.GetSection("Jwt");
