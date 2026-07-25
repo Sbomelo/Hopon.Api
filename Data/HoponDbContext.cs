@@ -174,5 +174,36 @@ public class HoponDbContext : DbContext
                 entity.Property( o => o.OtpCodeHash).HasMaxLength(255).IsRequired();
         });
 
+
+        //Seeding initial data
+        modelBuilder.Entity<User>().HasData(
+            new User {
+                Id = 1, 
+                FullName = "Sibonelo Vimba", 
+                PhoneNumber = "+27789689875",
+                CreatedAt = DateTime.UtcNow, 
+                IsActive = true
+                },
+
+            new User {
+                Id = 2,
+                FullName = "Lumiyo Vimba",
+                PhoneNumber = "+27835944077",
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
+            },
+
+            new User
+            {
+                Id = 3,
+                FullName = "Lee-Ann Damane",
+                PhoneNumber = "+27814629100",
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
+            }
+
+            );
+
+
     }
 }
