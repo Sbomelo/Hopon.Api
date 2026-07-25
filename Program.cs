@@ -16,7 +16,7 @@ builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddDbContext<HoponDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("HoponDb")));
 
-builder.Services.AddScoped<TripAccessService, TripAccessService>();
+builder.Services.AddScoped<ITripAccessService, TripAccessService>();
 
 //JWT CONFIGURATION
 var jwtSection = builder.Configuration.GetSection("Jwt");
