@@ -13,7 +13,7 @@ public class Ticket
     public int TripId {get; set; }
     public Trip Trip { get; set; } = null!;
 
-    public string? SetNumber {get; set; } 
+    public string? SeatNumber {get; set; } 
     public DateTime PurchaseDate { get; set; } = DateTime.UtcNow;
 
     public bool IsActive { get; set; } = true;
