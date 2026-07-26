@@ -4,6 +4,8 @@ using Hopon.Api.Filters;
 using Hopon.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Reflection.Metadata.Ecma335;
+using System.Security.Claims;
 
 namespace Hopon.Api.Controllers;
 
@@ -12,6 +14,14 @@ namespace Hopon.Api.Controllers;
 [Authorize]
 public class TripsController : ControllerBase
 {
+    private readonly ITripDashboardService _tripDashboardService;
+
+    public TripsController(ITripDashboardService tripDashboardService)
+    {
+        _tripDashboardService = tripDashboardService;
+    }
+
+
     [HttpGet("{tripId}/access-check")]
     [RequireTripAccess]
     public IActionResult CheckAccess(int tripId)
@@ -29,4 +39,16 @@ public class TripsController : ControllerBase
             ScheduledArrival = result.Trip.ScheduledArrival
         });
     }
+
+    [HttpGet("my-trips")]
+    public async Task<IActionResult> GetMyTrips()
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userIdClaim is null || !int.TryParse(userIdClaim, out var userId))
+            return Unauthorized();
+
+        var result = await _tripDashboardService.GetMyTripsAsync(userId);
+        return Ok(result);
+    }           
 }
