@@ -1,14 +1,24 @@
 using Hopon.Api.Data;
 using Hopon.Api.Services;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using System.Text;
 
-
-
-
 var builder = WebApplication.CreateBuilder(args);
+
+//Swagger UI
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Hopon.Api",
+        Version = "v1",
+        Description = "API for testing purposes"
+    });
+});
 
 //REGISTER SERVICES
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
@@ -16,6 +26,7 @@ builder.Services.AddDbContext<HoponDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("HoponDb")));
 
 builder.Services.AddScoped<ITripAccessService, TripAccessService>();
+builder.Services.AddScoped<ITripDashboardService, TripDashboardService>();
 
 //JWT CONFIGURATION
 var jwtSection = builder.Configuration.GetSection("Jwt");
@@ -40,7 +51,19 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+// Authorization
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Hopon.Api v1");
+    });
+}
 
 app.UseAuthentication();
 app.UseAuthorization();
