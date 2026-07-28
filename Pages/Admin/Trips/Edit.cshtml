@@ -1,0 +1,37 @@
+﻿@page "{id:int}"
+@model Hopon.Api.Pages.Admin.Trips.EditModel
+@{
+    ViewData["Title"] = "Edit Trip";
+}
+
+<h1>Edit Trip</h1>
+
+<form method="post" class="hopon-form" style="max-width:480px;">
+    <div asp-validation-summary="All" class="text-error"></div>
+
+    <label>Route</label>
+    <select asp-for="Input.BusRouteId" asp-items="Model.RouteItems"></select>
+
+    <label>Bus</label>
+    <select asp-for="Input.BusId" asp-items="Model.BusItems"></select>
+
+    <label>Driver</label>
+    <select asp-for="Input.DriverId" asp-items="Model.DriverItems">
+        <option value="">Unassigned</option>
+    </select>
+
+    <label>Scheduled Departure</label>
+    <input asp-for="Input.ScheduledDeparture" type="datetime-local" />
+
+    <label>Scheduled Arrival</label>
+    <input asp-for="Input.ScheduledArrival" type="datetime-local" />
+
+    <button type="submit" class="btn-primary">Save Changes</button>
+</form>
+
+<form method="post" asp-page-handler="MarkDelayed" asp-route-id="@Model.Id" style="display:inline; margin-top:1rem;">
+    <button type="submit" class="btn-secondary">Mark as Delayed</button>
+</form>
+<form method="post" asp-page-handler="MarkCompleted" asp-route-id="@Model.Id" style="display:inline; margin-top:1rem;">
+    <button type="submit" class="btn-secondary">Mark as Completed</button>
+</form>

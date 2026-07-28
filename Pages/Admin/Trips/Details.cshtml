@@ -1,0 +1,55 @@
+﻿@page "{id:int}"
+@model Hopon.Api.Pages.Admin.Trips.DetailsModel
+@{
+    ViewData["Title"] = "Trip Details";
+}
+
+@if (Model.Trip is null)
+{
+    <p>Trip not found.</p>
+}
+else
+{
+    var trip = Model.Trip;
+    <h1>@trip.RouteName</h1>
+    <p><span class="badge">@trip.Status</span></p>
+
+    <table class="hopon-table">
+        <tr><th>Bus</th><td>@trip.BusRegistration</td></tr>
+        <tr><th>Driver</th><td>@(trip.DriverName ?? "Unassigned")</td></tr>
+        <tr><th>Scheduled Departure</th><td>@trip.ScheduledDeparture.ToString("dd MMM yyyy, HH:mm")</td></tr>
+        <tr><th>Scheduled Arrival</th><td>@trip.ScheduledArrival.ToString("dd MMM yyyy, HH:mm")</td></tr>
+        <tr><th>Actual Departure</th><td>@(trip.ActualDeparture?.ToString("dd MMM yyyy, HH:mm") ?? "—")</td></tr>
+        <tr><th>Actual Arrival</th><td>@(trip.ActualArrival?.ToString("dd MMM yyyy, HH:mm") ?? "—")</td></tr>
+    </table>
+
+    <div style="margin-top:1rem;">
+        @if (trip.Status is "Scheduled" or "Delayed" or "InProgress")
+        {
+            <a class="btn-secondary" asp-page="./Edit" asp-route-id="@trip.TripId">Edit Trip</a>
+            <form method="post" asp-page-handler="Cancel" asp-route-id="@trip.TripId" style="display:inline;">
+                <button type="submit" class="btn-secondary" onclick="return confirm('Cancel this trip?');">Cancel Trip</button>
+            </form>
+        }
+    </div>
+
+    <h2 style="margin-top:2rem;">Tickets (@trip.Tickets.Count)</h2>
+    <table class="hopon-table">
+        <thead><tr><th>Reference</th><th>Passenger</th><th>Seat</th><th>Active</th></tr></thead>
+        <tbody>
+            @foreach (var ticket in trip.Tickets)
+            {
+                <tr>
+                    <td>@ticket.TicketReference</td>
+                    <td>@ticket.PassengerName</td>
+                    <td>@(ticket.SeatNumber ?? "—")</td>
+                    <td>@(ticket.IsActive ? "Yes" : "No")</td>
+                </tr>
+            }
+            @if (!trip.Tickets.Any())
+            {
+                <tr><td colspan="4">No tickets booked yet.</td></tr>
+            }
+        </tbody>
+    </table>
+}

@@ -1,0 +1,65 @@
+﻿@page
+@model Hopon.Api.Pages.Admin.Trips.IndexModel
+@{
+    ViewData["Title"] = "Trips";
+}
+
+<div style="display:flex; justify-content:space-between; align-items:center;">
+    <h1>Trips</h1>
+    <a class="btn-secondary" asp-page="./Create">+ New Trip</a>
+</div>
+
+<form method="get" class="hopon-form" style="display:flex; gap:1rem; align-items:end; max-width:none;">
+    <div style="flex:1;">
+        <label>Status</label>
+        <select asp-for="StatusFilter" onchange="this.form.submit()">
+            <option value="">All</option>
+            @foreach (var status in Enum.GetValues<TripStatus>())
+            {
+                <option value="@status">@status</option>
+            }
+        </select>
+    </div>
+    <div style="flex:1;">
+        <label>Route</label>
+        <select asp-for="RouteFilter" onchange="this.form.submit()">
+            <option value="">All routes</option>
+            @foreach (var route in Model.RouteOptions)
+            {
+                <option value="@route.Id">@route.Label</option>
+            }
+        </select>
+    </div>
+</form>
+
+<table class="hopon-table" style="margin-top:1rem;">
+    <thead>
+        <tr>
+            <th>Route</th>
+            <th>Bus</th>
+            <th>Driver</th>
+            <th>Departure</th>
+            <th>Status</th>
+            <th>Tickets</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var trip in Model.Trips)
+        {
+            <tr>
+                <td>@trip.RouteName</td>
+                <td>@trip.BusRegistration</td>
+                <td>@(trip.DriverName ?? "Unassigned")</td>
+                <td>@trip.ScheduledDeparture.ToString("dd MMM yyyy, HH:mm")</td>
+                <td><span class="badge">@trip.Status</span></td>
+                <td>@trip.TicketsSold</td>
+                <td><a asp-page="./Details" asp-route-id="@trip.TripId">View</a></td>
+            </tr>
+        }
+        @if (!Model.Trips.Any())
+        {
+            <tr><td colspan="7">No trips found.</td></tr>
+        }
+    </tbody>
+</table>

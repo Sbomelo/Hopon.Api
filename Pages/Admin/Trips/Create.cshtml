@@ -1,0 +1,34 @@
+﻿@page
+@model Hopon.Api.Pages.Admin.Trips.CreateModel
+@{
+    ViewData["Title"] = "New Trip";
+}
+
+<h1>New Trip</h1>
+
+<form method="post" class="hopon-form" style="max-width:480px;">
+    <div asp-validation-summary="All" class="text-error"></div>
+
+    <label>Route</label>
+    <select asp-for="Input.BusRouteId" asp-items="Model.RouteItems">
+        <option value="">Select a route</option>
+    </select>
+
+    <label>Bus</label>
+    <select asp-for="Input.BusId" asp-items="Model.BusItems">
+        <option value="">Select a bus</option>
+    </select>
+
+    <label>Driver (optional)</label>
+    <select asp-for="Input.DriverId" asp-items="Model.DriverItems">
+        <option value="">Unassigned</option>
+    </select>
+
+    <label>Scheduled Departure</label>
+    <input asp-for="Input.ScheduledDeparture" type="datetime-local" />
+
+    <label>Scheduled Arrival</label>
+    <input asp-for="Input.ScheduledArrival" type="datetime-local" />
+
+    <button type="submit" class="btn-primary">Create Trip</button>
+</form>
