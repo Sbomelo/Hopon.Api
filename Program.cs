@@ -21,12 +21,17 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 //REGISTER SERVICES
+builder.Services.AddControllers();
+builder.Services.AddRazorPages();
+
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddDbContext<HoponDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("HoponDb")));
 
 builder.Services.AddScoped<ITripAccessService, TripAccessService>();
 builder.Services.AddScoped<ITripDashboardService, TripDashboardService>();
+builder.Services.AddScoped<IAdminTripService, AdminTripService>();
+
 
 //JWT CONFIGURATION
 var jwtSection = builder.Configuration.GetSection("Jwt");
@@ -65,7 +70,12 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+app.UseStaticFiles();
+
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapControllers();
+app.MapRazorPages();
 
 app.Run();
