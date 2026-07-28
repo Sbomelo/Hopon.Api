@@ -28,7 +28,7 @@ else
         {
             <a class="btn-secondary" asp-page="./Edit" asp-route-id="@trip.TripId">Edit Trip</a>
             <form method="post" asp-page-handler="Cancel" asp-route-id="@trip.TripId" style="display:inline;">
-                <button type="submit" class="btn-secondary" onclick="return confirm('Cancel this trip?');">Cancel Trip</button>
+                <button type="submit" class="btn-danger" onclick="return confirm('Cancel this trip?');">Cancel Trip</button>
             </form>
         }
     </div>
