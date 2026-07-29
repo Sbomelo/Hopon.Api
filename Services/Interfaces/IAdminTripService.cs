@@ -1,7 +1,7 @@
 ﻿using Hopon.Api.DTOs.Admin;
 using Hopon.Api.Models.Enums;
 
-namespace Hopon.Api.Services
+namespace Hopon.Api.Services.Interfaces
 {
     public interface IAdminTripService
     {

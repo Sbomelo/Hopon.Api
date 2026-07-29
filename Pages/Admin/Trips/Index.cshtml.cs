@@ -1,8 +1,8 @@
 using Hopon.Api.DTOs.Admin;
-using Hopon.Api.Services;
 using Hopon.Api.Models.Enums;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc;
+using Hopon.Api.Services.Interfaces;
 
 namespace Hopon.Api.Pages.Admin.Trips
 {

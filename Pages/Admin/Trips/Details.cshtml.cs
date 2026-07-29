@@ -1,6 +1,6 @@
 using Hopon.Api.DTOs.Admin;
 using Hopon.Api.Models.Enums;
-using Hopon.Api.Services;
+using Hopon.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
