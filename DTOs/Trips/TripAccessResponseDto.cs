@@ -1,4 +1,4 @@
-﻿namespace Hopon.Api.DTOs
+﻿namespace Hopon.Api.DTOs.Trips
 {
     public class TripAccessResponseDto
     {

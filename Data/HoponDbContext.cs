@@ -40,6 +40,14 @@ public class HoponDbContext : DbContext
                 .HasForeignKey<EmergencyContact>(ec => ec.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+        //Driver
+        modelBuilder.Entity<Driver>(entity =>
+        {
+            entity.HasIndex(d => d.Username).IsUnique();
+            entity.Property(d => d.Username).HasMaxLength(100).IsRequired();
+            entity.Property(d => d.PasswordHash).HasMaxLength(255).IsRequired();
+        });
+
 
         //Route Stop
         modelBuilder.Entity<RouteStop>()
@@ -203,6 +211,20 @@ public class HoponDbContext : DbContext
             }
 
             );
+
+        //Seed demo driver
+        modelBuilder.Entity<Driver>().HasData(
+            new Driver
+            {
+                Id = 1,
+                FullName = "Lumiyo V.",
+                PhoneNumber = "+27821234567",
+                Username = "driver1",
+                PasswordHash = "$2b$11$UuSLULVipvBFekLPyiR5/uskliTxsDk7X0gnK4gkjzMQaF703w.0K",
+                IsActive = true,
+                CreatedAt = new DateTime(2026, 7, 29, 0, 0, 0, DateTimeKind.Utc)
+            }
+        );
 
 
     }

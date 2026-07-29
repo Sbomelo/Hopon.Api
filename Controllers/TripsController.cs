@@ -1,5 +1,5 @@
 ﻿using Hopon.Api.DTOs;
-using Hopon.Api.DTOs;
+using Hopon.Api.DTOs.Trips;
 using Hopon.Api.Filters;
 using Hopon.Api.Services;
 using Microsoft.AspNetCore.Authorization;

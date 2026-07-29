@@ -1,5 +1,6 @@
 using Hopon.Api.Data;
 using Hopon.Api.Services;
+using Hopon.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -31,6 +32,9 @@ builder.Services.AddDbContext<HoponDbContext>(options =>
 builder.Services.AddScoped<ITripAccessService, TripAccessService>();
 builder.Services.AddScoped<ITripDashboardService, TripDashboardService>();
 builder.Services.AddScoped<IAdminTripService, AdminTripService>();
+builder.Services.AddScoped<IDriverAuthService, DriverAuthService>();
+builder.Services.AddScoped<IDriverTripAccessService, DriverTripAccessService>();
+builder.Services.AddScoped<IDriverTripService, DriverTripService>();
 
 
 //JWT CONFIGURATION
