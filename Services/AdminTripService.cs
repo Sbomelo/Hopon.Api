@@ -2,6 +2,7 @@
 using Hopon.Api.DTOs.Admin;
 using Hopon.Api.Models;
 using Hopon.Api.Models.Enums;
+using Hopon.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 

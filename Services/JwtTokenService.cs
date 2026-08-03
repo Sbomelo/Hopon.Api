@@ -45,4 +45,37 @@ public class JwtTokenService : IJwtTokenService
 
      return (new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
     }
+
+    public (string Token, DateTime ExpiresAt) GenerateToken(Driver driver)
+    {
+        //Build the signing Key
+        var jwtSection = _config.GetSection("Jwt");
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSection["Key"]!));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        //Set expiry
+        var expiresAt = DateTime.UtcNow.AddHours(double.Parse(jwtSection["ExpiryHours"]!));
+
+        //Build Claims
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, driver.Id.ToString()),
+            new(ClaimTypes.Name, driver.FullName),
+            new(ClaimTypes.Role, "Driver"),
+            new("userName", driver.PhoneNumber)
+        };
+
+        //Create Token
+        var token = new JwtSecurityToken(
+            issuer: jwtSection["Issuer"],
+            audience: jwtSection["Audience"],
+            claims: claims,
+            expires: expiresAt,
+            signingCredentials: credentials
+        );
+
+        return (new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
+    }
+
+
 }
