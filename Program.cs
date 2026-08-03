@@ -1,4 +1,5 @@
 using Hopon.Api.Data;
+using Hopon.Api.Hubs;
 using Hopon.Api.Services;
 using Hopon.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -24,10 +25,12 @@ builder.Services.AddSwaggerGen(options =>
 //REGISTER SERVICES
 builder.Services.AddControllers();
 builder.Services.AddRazorPages();
+builder.Services.AddSignalR();
 
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddDbContext<HoponDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("HoponDb")));
+
 
 builder.Services.AddScoped<ITripAccessService, TripAccessService>();
 builder.Services.AddScoped<ITripDashboardService, TripDashboardService>();
@@ -58,6 +61,22 @@ builder.Services.AddAuthentication(options =>
         ValidateLifetime = true,
         IssuerSigningKey = new SymmetricSecurityKey( Encoding.UTF8.GetBytes(jwtSection["Key"]!))
     };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+            {
+                context.Token = accessToken;
+            }
+
+            return Task.CompletedTask;
+        }
+    };
 });
 
 // Authorization
@@ -81,5 +100,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapRazorPages();
+app.MapHub<TripHub>("/hubs/trip");
 
 app.Run();

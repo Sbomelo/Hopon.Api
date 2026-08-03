@@ -9,7 +9,7 @@ using System.Security.Claims;
 
 namespace Hopon.Api.Controllers
 {
-    [Route("api/[driver]")]
+    [Route("api/driver")]
     [ApiController]
     [Authorize(Roles ="Driver")]
     public class DriverController : ControllerBase
