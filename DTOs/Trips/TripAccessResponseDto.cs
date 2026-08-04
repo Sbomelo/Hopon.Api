@@ -9,5 +9,7 @@
         public bool IsTrackingActive { get; set; }
         public DateTime ScheduledDeparture { get; set; }
         public DateTime ScheduledArrival { get; set; }
+        public DateTime? EstimatedArrival { get; set; }
+        public bool IsEstimate { get; set; }
     }
 }

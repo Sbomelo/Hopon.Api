@@ -1,5 +1,6 @@
 ﻿using Hopon.Api.Data;
 using Hopon.Api.DTOs.Trips;
+using Hopon.Api.Models;
 using Hopon.Api.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
@@ -30,6 +31,8 @@ namespace Hopon.Api.Services
             {
                 var trip = ticket.Trip;
 
+                var (estimatedArrival, isEstimate) = EtaCalculator.CalculateEta(trip);
+
                 var dto = new MyTripDto
                 {
                     TripId = trip.Id,
@@ -40,6 +43,8 @@ namespace Hopon.Api.Services
                     ScheduledArrival = trip.ScheduledArrival,
                     ActualDepature = trip.ActualDeparture,
                     ActualArrival = trip.ActualArrival,
+                    EstimatedArrival = estimatedArrival,
+                    IsEstimate = isEstimate,
                     Status = trip.Status.ToString(),
                     IsLive = TripStatusRules.IsTrackingActive(trip.Status)
                 };

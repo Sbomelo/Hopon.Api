@@ -1,6 +1,7 @@
 ﻿using Hopon.Api.DTOs;
 using Hopon.Api.DTOs.Trips;
 using Hopon.Api.Filters;
+using Hopon.Api.Models;
 using Hopon.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -27,6 +28,7 @@ public class TripsController : ControllerBase
     public IActionResult CheckAccess(int tripId)
     {
         var result = (TripAccessResult)HttpContext.Items["TripAccessResult"]!;
+        var (estimatedArrival, isEstimate) = EtaCalculator.CalculateEta(result.Trip!);
 
         return Ok(new TripAccessResponseDto
         {
@@ -36,7 +38,9 @@ public class TripsController : ControllerBase
             TripStatus = result.Trip.Status.ToString(),
             IsTrackingActive = result.IsTrackingActive,
             ScheduledDeparture = result.Trip.ScheduledDeparture,
-            ScheduledArrival = result.Trip.ScheduledArrival
+            ScheduledArrival = result.Trip.ScheduledArrival,
+            EstimatedArrival = estimatedArrival,
+            IsEstimate = isEstimate
         });
     }
 
