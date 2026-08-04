@@ -216,7 +216,7 @@ public class HoponDbContext : DbContext
         modelBuilder.Entity<Driver>().HasData(
             new Driver
             {
-                Id = 1,
+                Id = 2,
                 FullName = "Lumiyo V.",
                 PhoneNumber = "+27821234567",
                 Username = "driver1",
