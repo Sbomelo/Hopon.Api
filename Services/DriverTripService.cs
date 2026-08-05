@@ -16,12 +16,14 @@ namespace Hopon.Api.Services
         private readonly HoponDbContext _db;
         private readonly ILogger<DriverTripService> _logger;
         private readonly IHubContext<TripHub> _hubContext;
-        
-        public DriverTripService(HoponDbContext db, ILogger<DriverTripService> logger, IHubContext<TripHub> hubContext)
+        private readonly INotificationService _notificationService;
+
+        public DriverTripService(HoponDbContext db, ILogger<DriverTripService> logger, IHubContext<TripHub> hubContext, INotificationService notificationService)
         {
             _db = db;
             _logger = logger;
             _hubContext = hubContext;
+            _notificationService = notificationService;
         }
 
 
@@ -50,7 +52,9 @@ namespace Hopon.Api.Services
 
             _logger.LogInformation("Trip {TripId} delayed: {Reason}", trip.Id, reason);
 
-            await BroadcastStatusAsync(trip, reason: null);
+            await _notificationService.NotifyTripDelayedAsync(trip, reason);
+
+            await BroadcastStatusAsync(trip, reason: reason);
 
             return (true, null);
         }
