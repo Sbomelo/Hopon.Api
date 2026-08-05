@@ -49,7 +49,7 @@ namespace Hopon.Api.Services
             await _db.SaveChangesAsync();
         }
 
-        public async Task<List<NotificationDto>> GetNotificationForUser(int userId)
+        public async Task<List<NotificationDto>> GetNotificationsForUserAsync(int userId)
         {
             return await _db.NotificationLogs
                              .Where(n => n.UserId == userId)
