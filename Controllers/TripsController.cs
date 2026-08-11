@@ -18,11 +18,13 @@ public class TripsController : ControllerBase
 {
     private readonly ITripDashboardService _tripDashboardService;
     private readonly IBoardingService _boardingService;
+    private readonly ITripHistoryService _tripHistoryService;
 
-    public TripsController(ITripDashboardService tripDashboardService, IBoardingService boardingService)
+    public TripsController(ITripDashboardService tripDashboardService, IBoardingService boardingService, ITripHistoryService tripHistoryService)
     {
         _tripDashboardService = tripDashboardService;
         _boardingService = boardingService;
+        _tripHistoryService = tripHistoryService;
     }
 
 
@@ -91,5 +93,21 @@ public class TripsController : ControllerBase
         return success ? Ok(status) : BadRequest(error);
     }
 
+    [HttpGet("{tripId}/history")]
+    [RequireTripAccess]
+    public async Task<IActionResult> GetTripHistory(int tripId)
+    {
+        var userIdClaims = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userIdClaims is null || !int.TryParse(userIdClaims, out var userId))
+            return Unauthorized();
+
+        var history = await _tripHistoryService.GetTripHistoryAsync(userId, tripId);
+
+        if (history is null)
+            return NotFound(new { message = "Trip history not found." });
+
+        return Ok(history);
+    }
 
 }

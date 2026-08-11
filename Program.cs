@@ -40,6 +40,7 @@ builder.Services.AddScoped<IDriverTripAccessService, DriverTripAccessService>();
 builder.Services.AddScoped<IDriverTripService, DriverTripService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IBoardingService, BoardingService>();
+builder.Services.AddScoped<ITripHistoryService, TripHistoryService>();
 
 
 //JWT CONFIGURATION
