@@ -73,38 +73,29 @@ public class OtpService : IOtpService
         return (true, null, devOnlyCode);
     }
 
-    public async Task<(bool Success, string? Error)> VerifyOtpAsync (string phoneNumber, string code)
+    public async Task<(bool Success, string? Error)> VerifyOtpAsync(string phoneNumber, string code)
     {
         var otpRequest = await _db.OtpRequests
-                                .Where(o => o.PhoneNumber == phoneNumber && !o.IsUsed)
-                                .OrderByDescending( o => o.CreatedAt)
-                                .FirstOrDefaultAsync();
-        
+            .Where(o => o.PhoneNumber == phoneNumber && !o.IsUsed)
+            .OrderByDescending(o => o.CreatedAt)
+            .FirstOrDefaultAsync();
 
         if (otpRequest is null)
-        {
             return (false, "No active OTP request found. Please request an OTP code.");
-        }
 
+        if (otpRequest.ExpiresAt < DateTime.UtcNow)
+            return (false, "This code has expired. Please request a new one.");
 
-        if(otpRequest.ExpiresAt < DateTime.UtcNow)
-        {
-            return (false, "This code has expired. Please request a new one");
-        }
-
-        
-        if(otpRequest.AttemptCount >= MaxVerifyAttempts)
-        {
+        if (otpRequest.AttemptCount >= MaxVerifyAttempts)
             return (false, "Too many incorrect attempts. Please request a new code.");
-        }
 
         var isMatch = BCrypt.Net.BCrypt.Verify(code, otpRequest.OtpCodeHash);
 
-        if (isMatch)
+        if (!isMatch)
         {
             otpRequest.AttemptCount++;
             await _db.SaveChangesAsync();
-            return (false, "Incorrect code");
+            return (false, "Incorrect code.");
         }
 
         otpRequest.IsUsed = true;
@@ -113,11 +104,11 @@ public class OtpService : IOtpService
         return (true, null);
     }
 
-    private static string GenerateNumericCode (int length)
+    private static string GenerateNumericCode(int length)
     {
         var max = (int)Math.Pow(10, length);
         var code = Random.Shared.Next(0, max);
-        return code.ToString(new string('O', length));
+        return code.ToString(new string('0', length));
     }
 }
     
