@@ -31,6 +31,8 @@ builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddDbContext<HoponDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("HoponDb")));
 
+builder.Services.AddScoped<IOtpService, OtpService>();
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<ITripAccessService, TripAccessService>();
 builder.Services.AddScoped<ITripDashboardService, TripDashboardService>();
 builder.Services.AddScoped<IAdminTripService, AdminTripService>();
