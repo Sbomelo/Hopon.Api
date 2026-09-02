@@ -31,7 +31,6 @@ builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddDbContext<HoponDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("HoponDb")));
 
-
 builder.Services.AddScoped<ITripAccessService, TripAccessService>();
 builder.Services.AddScoped<ITripDashboardService, TripDashboardService>();
 builder.Services.AddScoped<IAdminTripService, AdminTripService>();
@@ -85,6 +84,15 @@ builder.Services.AddAuthentication(options =>
 // Authorization
 builder.Services.AddAuthorization();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp",
+        policy => policy.WithOrigins("http://localhost:5173")
+                        .AllowAnyHeader()
+                        .AllowAnyMethod());
+});
+
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -98,6 +106,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseStaticFiles();
 
+app.UseCors("AllowReactApp");
 app.UseAuthentication();
 app.UseAuthorization();
 
