@@ -43,6 +43,7 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IBoardingService, BoardingService>();
 builder.Services.AddScoped<ITripHistoryService, TripHistoryService>();
 builder.Services.AddScoped<ITripMapService, TripMapService>();
+builder.Services.AddScoped<IEmergencyContactService, EmergencyContactService>();
 
 
 //JWT CONFIGURATION
