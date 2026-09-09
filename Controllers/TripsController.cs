@@ -21,7 +21,7 @@ public class TripsController : ControllerBase
     private readonly ITripHistoryService _tripHistoryService;
     private readonly ITripMapService _tripMapService;
 
-    public TripsController(ITripDashboardService tripDashboardService, IBoardingService boardingService, ITripHistoryService tripHistoryService, TripMapService tripMapService)
+    public TripsController(ITripDashboardService tripDashboardService, IBoardingService boardingService, ITripHistoryService tripHistoryService, ITripMapService tripMapService)
     {
         _tripDashboardService = tripDashboardService;
         _boardingService = boardingService;

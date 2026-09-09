@@ -21,7 +21,7 @@ namespace Hopon.Api.Services
                         .Include(t => t.TripStops.OrderBy(ts => ts.SequenceOrder))
                            .ThenInclude(ts => ts.Stop)
                         .AsNoTracking()
-                        .FirstOrDefaultAsync();
+                        .FirstOrDefaultAsync(t => t.Id == tripId);
 
             if (trip is null)
                 return null;
