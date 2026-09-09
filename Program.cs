@@ -42,6 +42,7 @@ builder.Services.AddScoped<IDriverTripService, DriverTripService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IBoardingService, BoardingService>();
 builder.Services.AddScoped<ITripHistoryService, TripHistoryService>();
+builder.Services.AddScoped<ITripMapService, TripMapService>();
 
 
 //JWT CONFIGURATION
@@ -88,11 +89,16 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowReactApp",
-        policy => policy.WithOrigins("http://localhost:5173")
+    options.AddPolicy("AllowPassengerApp",
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:5173")
                         .AllowAnyHeader()
-                        .AllowAnyMethod());
+                        .AllowAnyMethod()
+                        .AllowCredentials();
+        });
 });
+
 
 
 var app = builder.Build();
@@ -108,7 +114,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseStaticFiles();
 
-app.UseCors("AllowReactApp");
+app.UseCors("AllowPassengerApp");
 app.UseAuthentication();
 app.UseAuthorization();
 

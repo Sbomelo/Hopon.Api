@@ -19,12 +19,14 @@ public class TripsController : ControllerBase
     private readonly ITripDashboardService _tripDashboardService;
     private readonly IBoardingService _boardingService;
     private readonly ITripHistoryService _tripHistoryService;
+    private readonly ITripMapService _tripMapService;
 
-    public TripsController(ITripDashboardService tripDashboardService, IBoardingService boardingService, ITripHistoryService tripHistoryService)
+    public TripsController(ITripDashboardService tripDashboardService, IBoardingService boardingService, ITripHistoryService tripHistoryService, TripMapService tripMapService)
     {
         _tripDashboardService = tripDashboardService;
         _boardingService = boardingService;
         _tripHistoryService = tripHistoryService;
+        _tripMapService = tripMapService;
     }
 
 
@@ -108,6 +110,21 @@ public class TripsController : ControllerBase
             return NotFound(new { message = "Trip history not found." });
 
         return Ok(history);
+    }
+
+    [HttpGet("{tripId}/map-data")]
+    [RequireTripAccess]
+    public async Task<IActionResult> GetMapData(int tripId)
+    {
+        var mapData = await _tripMapService.GetMapDataAsync(tripId);
+
+        if (mapData is null)
+            return NotFound(new { 
+                message = "Map Data not found"
+            });
+
+        return Ok(mapData);
+
     }
 
 }
