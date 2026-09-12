@@ -1,0 +1,25 @@
+﻿@{
+    var theme = Context.Request.Cookies["hopon-theme"] == "dark" ? "dark" : "light";
+}
+<!DOCTYPE html>
+<html lang="en" data-theme="@theme">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] - Hopon Driver</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body>
+    <header class="hopon-header">
+        <div class="hopon-brand">Hopon <span>Driver</span></div>
+        <button id="theme-toggle" class="theme-toggle" type="button">Theme</button>
+    </header>
+    <main class="hopon-main" style="padding: 1rem; max-width: 540px;">
+        @RenderBody()
+    </main>
+    <script src="~/js/theme.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

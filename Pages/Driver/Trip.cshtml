@@ -1,0 +1,273 @@
+﻿@page
+@model Hopon.Api.Pages.Driver.TripModel
+@{
+    Layout = "Shared/_DriverLayout";
+    ViewData["Title"] = "My Trip";
+    var t = Model.Trip;
+}
+
+@if (Model.ActionMessage is not null)
+{
+    <div style="padding: 0.75rem 1rem; border-radius: 10px; margin-bottom: 1rem; font-weight: 500; font-size: 0.9rem;
+        background: @(Model.ActionSuccess ? "var(--color-surface-alt)" : "rgba(220,38,38,0.08)");
+        border: 1px solid @(Model.ActionSuccess ? "var(--color-border)" : "var(--color-danger)");
+        color: @(Model.ActionSuccess ? "var(--color-text)" : "var(--color-danger)");">
+        @Model.ActionMessage
+    </div>
+}
+
+@if (t is null)
+{
+    <div style="background: var(--color-surface); border: 1px solid var(--color-border);
+        border-radius: 14px; padding: 2.5rem 1.5rem; text-align: center; margin-top: 2rem;">
+        <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">🚌</div>
+        <p style="font-weight: 600; margin-bottom: 0.3rem;">No active trip</p>
+        <p style="opacity: 0.55; font-size: 0.875rem;">
+            You have no trip assigned right now, or the trip has been completed.
+        </p>
+    </div>
+}
+else
+{
+    @* ─── Trip header card ─── *@
+    <div style="background: var(--color-surface); border: 1px solid var(--color-border);
+        border-radius: 14px; padding: 1.1rem 1.2rem; margin-bottom: 1rem;">
+
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.85rem;">
+            <div>
+                <div style="font-weight: 700; font-size: 1.1rem; color: var(--color-text);">
+                    @t.RouteName
+                </div>
+                <div style="font-size: 0.78rem; opacity: 0.55; margin-top: 0.15rem;">
+                    Bus @t.BusRegistration
+                </div>
+            </div>
+            <span class="badge" style="color: @(t.Status == "Delayed" ? "var(--color-danger)"
+                                                              : t.Status == "Completed" ? "var(--color-success)"
+                                                              : "var(--color-interactive)");">
+                @(t.Status == "InProgress" ? "In Progress" : t.Status)
+            </span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+            <div style="background: var(--color-surface-alt); border: 1px solid var(--color-border);
+                border-radius: 8px; padding: 0.6rem 0.75rem;">
+                <div style="font-size: 0.65rem; opacity: 0.5; letter-spacing: 0.05em; margin-bottom: 0.2rem;">DEPARTS</div>
+                <div style="font-weight: 600; font-size: 0.95rem;">@t.ScheduledDeparture.ToString("HH:mm")</div>
+                <div style="font-size: 0.72rem; opacity: 0.45;">@t.ScheduledDeparture.ToString("dd MMM")</div>
+            </div>
+            <div style="background: var(--color-surface-alt); border: 1px solid var(--color-border);
+                border-radius: 8px; padding: 0.6rem 0.75rem;">
+                <div style="font-size: 0.65rem; opacity: 0.5; letter-spacing: 0.05em; margin-bottom: 0.2rem;">ARRIVES</div>
+                <div style="font-weight: 600; font-size: 0.95rem;">@t.ScheduledArrival.ToString("HH:mm")</div>
+                <div style="font-size: 0.72rem; opacity: 0.45;">@t.ScheduledArrival.ToString("dd MMM")</div>
+            </div>
+        </div>
+
+        @if (t.LastLocationAt.HasValue)
+        {
+            <div style="margin-top: 0.75rem; font-size: 0.78rem; opacity: 0.5;">
+                Last GPS: @t.LastLatitude!.Value.ToString("F4")°, @t.LastLongitude!.Value.ToString("F4")°
+                <span style="margin-left: 0.3rem;">· @t.LastLocationAt.Value.ToString("HH:mm:ss") UTC</span>
+            </div>
+        }
+    </div>
+
+    @* ─── GPS button ─── *@
+    @if (t.Status is "InProgress" or "Delayed")
+    {
+        <form method="post" asp-page-handler="PostLocation" id="gps-form" style="margin-bottom: 1rem;">
+            <input type="hidden" name="Latitude" id="lat-input" />
+            <input type="hidden" name="Longitude" id="lng-input" />
+            <button type="button" id="gps-btn" class="btn-primary" style="width: 100%; font-size: 1rem; padding: 0.9rem;">
+                📍 Post My Location
+            </button>
+            <p id="gps-status" style="font-size: 0.78rem; opacity: 0.55; text-align: center; margin-top: 0.4rem; min-height: 1rem;"></p>
+        </form>
+    }
+
+    @* ─── Stop actions ─── *@
+    @if (t.NextPendingStop is not null || t.CurrentArrivedStop is not null)
+    {
+        <div style="background: var(--color-surface); border: 1px solid var(--color-border);
+            border-radius: 14px; padding: 1.1rem 1.2rem; margin-bottom: 1rem;">
+            <div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+                letter-spacing: 0.06em; opacity: 0.5; margin-bottom: 0.75rem;">
+                Stops
+            </div>
+
+            @if (t.NextPendingStop is not null)
+            {
+                <form method="post" asp-page-handler="MarkArrived" style="margin-bottom: 0.6rem;">
+                    <input type="hidden" name="TripStopId" value="@t.NextPendingStop.TripStopId" />
+                    <button type="submit" class="btn-secondary" style="width: 100%; padding: 0.8rem;">
+                        ✅ Arrive at @t.NextPendingStop.StopName
+                    </button>
+                </form>
+            }
+
+            @if (t.CurrentArrivedStop is not null)
+            {
+                <form method="post" asp-page-handler="MarkDeparted">
+                    <input type="hidden" name="TripStopId" value="@t.CurrentArrivedStop.TripStopId" />
+                    <button type="submit" class="btn-secondary" style="width: 100%; padding: 0.8rem;">
+                        🚏 Depart from @t.CurrentArrivedStop.StopName
+                    </button>
+                </form>
+            }
+        </div>
+    }
+
+    @* ─── Delay / resume ─── *@
+    @if (t.Status is "InProgress" or "Delayed")
+    {
+        <div style="background: var(--color-surface); border: 1px solid var(--color-border);
+            border-radius: 14px; padding: 1.1rem 1.2rem; margin-bottom: 1rem;">
+            <div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+                letter-spacing: 0.06em; opacity: 0.5; margin-bottom: 0.75rem;">
+                Delay
+            </div>
+
+            @if (t.Status == "InProgress")
+            {
+                <form method="post" asp-page-handler="ReportDelay" class="hopon-form">
+                    <input type="text" asp-for="DelayReason"
+                           placeholder="Reason — e.g. traffic, roadblock (optional)"
+                           style="margin-bottom: 0.5rem;" />
+                    <button type="submit" class="btn-danger" style="width: 100%; padding: 0.8rem;">
+                        ⚠️ Report Delay
+                    </button>
+                </form>
+            }
+            else
+            {
+                <div style="background: rgba(220,38,38,0.07); border: 1px solid var(--color-danger);
+                    border-radius: 8px; padding: 0.6rem 0.75rem; margin-bottom: 0.75rem;
+                    font-size: 0.875rem; color: var(--color-danger); font-weight: 600;">
+                    ⚠️ Trip is currently delayed
+                </div>
+                <form method="post" asp-page-handler="Resume">
+                    <button type="submit" class="btn-secondary" style="width: 100%; padding: 0.8rem;">
+                        ✅ Resume — Clear Delay
+                    </button>
+                </form>
+            }
+        </div>
+    }
+
+    @* ─── Trip lifecycle ─── *@
+    <div style="background: var(--color-surface); border: 1px solid var(--color-border);
+        border-radius: 14px; padding: 1.1rem 1.2rem; margin-bottom: 1.25rem;">
+        <div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.06em; opacity: 0.5; margin-bottom: 0.75rem;">
+            Trip
+        </div>
+
+        @if (t.Status == "Scheduled")
+        {
+            <form method="post" asp-page-handler="StartTrip">
+                <button type="submit" class="btn-primary" style="width: 100%; padding: 0.9rem; font-size: 1rem;">
+                    ▶ Start Trip
+                </button>
+            </form>
+        }
+        else if (t.Status is "InProgress" or "Delayed")
+        {
+            <form method="post" asp-page-handler="CompleteTrip">
+                <button type="submit" class="btn-secondary" style="width: 100%; padding: 0.8rem;"
+                        onclick="return confirm('Mark this trip as completed?')">
+                    🏁 Complete Trip
+                </button>
+            </form>
+        }
+        else
+        {
+            <p style="text-align: center; opacity: 0.5; font-size: 0.875rem;">
+                Trip is @t.Status.
+            </p>
+        }
+    </div>
+
+    @* ─── Stop timeline ─── *@
+    <div style="background: var(--color-surface); border: 1px solid var(--color-border);
+        border-radius: 14px; padding: 1.1rem 1.2rem;">
+        <div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.06em; opacity: 0.5; margin-bottom: 0.9rem;">
+            Route Progress
+        </div>
+
+        @foreach (var (stop, index) in t.Stops.Select((s, i) => (s, i)))
+        {
+            var departed = stop.Status == "Departed";
+            var arrived = stop.Status == "Arrived";
+            var dotColor = departed ? "var(--color-interactive)"
+                         : arrived ? "var(--color-accent)"
+                         : "var(--color-border)";
+
+            <div style="display: flex; gap: 0.75rem; @(index < t.Stops.Count - 1 ? "margin-bottom: 0.1rem;" : "")">
+                <div style="display: flex; flex-direction: column; align-items: center; flex-shrink: 0;">
+                    <div style="width: 13px; height: 13px; border-radius: 50%; margin-top: 0.25rem;
+                    background: @dotColor; border: 2px solid @dotColor;"></div>
+                    @if (index < t.Stops.Count - 1)
+                    {
+                        <div style="width: 2px; flex: 1; min-height: 22px;
+                        background: @(departed ? "var(--color-border)" : "var(--color-border)");
+                        opacity: @(departed ? "0.8" : "0.3"); margin: 2px 0;"></div>
+                    }
+                </div>
+                <div style="padding-bottom: @(index < t.Stops.Count - 1 ? "0" : "0"); margin-bottom: 0.5rem;
+                    opacity: @(departed ? "0.45" : "1");">
+                    <div style="font-weight: @(arrived ? "700" : "500"); font-size: 0.88rem;
+                        color: @(arrived ? "var(--color-accent)" : "var(--color-text)");">
+                        @stop.StopName
+                    </div>
+                    <div style="font-size: 0.72rem; opacity: 0.55; margin-top: 0.1rem;">
+                        Sch. @stop.ScheduledArrival.ToString("HH:mm")
+                        @if (stop.ActualArrival.HasValue)
+                        {
+                            <span> · Arrived @stop.ActualArrival.Value.ToString("HH:mm")</span>
+                        }
+                        <span style="margin-left: 0.3rem;">· @stop.Status</span>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@section Scripts {
+    <script>
+        (function() {
+            var btn = document.getElementById('gps-btn');
+            var form = document.getElementById('gps-form');
+            var status = document.getElementById('gps-status');
+
+            if (!btn) return;
+
+            btn.addEventListener('click', function() {
+                if (!navigator.geolocation) {
+                    status.textContent = 'Geolocation is not supported by this browser.';
+                    return;
+                }
+                btn.textContent = 'Getting location…';
+                btn.disabled = true;
+                status.textContent = 'Waiting for GPS signal…';
+
+                navigator.geolocation.getCurrentPosition(
+                    function(pos) {
+                        document.getElementById('lat-input').value = pos.coords.latitude;
+                        document.getElementById('lng-input').value = pos.coords.longitude;
+                        status.textContent = 'Got location — submitting…';
+                        form.submit();
+                    },
+                    function(err) {
+                        status.textContent = 'Could not get location: ' + err.message;
+                        btn.textContent = '📍 Post My Location';
+                        btn.disabled = false;
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            });
+        })();
+    </script>
+}

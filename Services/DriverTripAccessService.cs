@@ -17,8 +17,6 @@ public class DriverTripAccessService : IDriverTripAccessService
 
     public async Task<DriverTripAccessResult> CheckDriverTripAccessAsync(int driverId, int tripId)
     {
-        // No AsNoTracking here, deliberately — DriverTripService mutates this
-        // same tracked entity later in the request via HttpContext.Items.
         var trip = await _db.Trips
                              .FirstOrDefaultAsync(t => t.Id == tripId && t.DriverId == driverId);
 
@@ -41,4 +39,20 @@ public class DriverTripAccessService : IDriverTripAccessService
                          .OrderBy(t => t.ScheduledDeparture)
                          .FirstOrDefaultAsync();
     }
+
+    public async Task<Trip?> GetActiveTripWithStopsForDriverAsync(int driverId)
+    {
+        return await _db.Trips
+            .Include(t => t.BusRoute)
+            .Include(t => t.Bus)
+            .Include(t => t.TripStops.OrderBy(ts => ts.SequenceOrder))
+                .ThenInclude(ts => ts.Stop)
+            .Where(t => t.DriverId == driverId &&
+               (t.Status == TripStatus.Scheduled ||
+                t.Status == TripStatus.InProgress ||
+                t.Status == TripStatus.Delayed))
+            .OrderBy(t => t.ScheduledDeparture)
+            .FirstOrDefaultAsync();
+    }
+
 }

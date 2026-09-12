@@ -58,6 +58,19 @@ namespace Hopon.Api.Services
 
             return (true, null);
         }
+
+        public async Task<(bool Success, string? Error)> ResumeFromDelayAsync(Trip trip)
+        {
+            if (trip.Status != TripStatus.Delayed)
+                return (false, $"Trip is not currently delayed. Current status: {trip.Status}.");
+
+            trip.Status = TripStatus.InProgress;
+            await _db.SaveChangesAsync();
+
+            await BroadcastStatusAsync(trip, reason: null);
+            return (true, null);
+        }
+
         public async Task<(bool Success, string? Error)> CompletedAsync(Trip trip)
         {
             if (trip.Status != TripStatus.InProgress && trip.Status != TripStatus.Delayed)
@@ -93,6 +106,58 @@ namespace Hopon.Api.Services
                 Longitude = longitude,
                 RecordedAt = DateTime.UtcNow
             });
+
+            return (true, null);
+        }
+
+        public async Task<(bool Success, string? Error)> MarkStopArrivedAsync(int tripStopId)
+        {
+            var ts = await _db.TripStops
+                .Include(x => x.Stop)
+                .FirstOrDefaultAsync(x => x.Id == tripStopId);
+
+            if (ts is null) return (false, "Stop not found.");
+            if (ts.Status != TripStopStatus.Pending)
+                return (false, $"Stop is already {ts.Status}.");
+
+            ts.Status = TripStopStatus.Arrived;
+            ts.ActualArrival = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            await _hubContext.Clients.Group(TripHub.GroupName(ts.TripId))
+                .SendAsync("ReceiveStopUpdate", new
+                {
+                    tripStopId = ts.Id,
+                    stopName = ts.Stop.Name,
+                    status = ts.Status.ToString(),
+                    actualArrival = ts.ActualArrival
+                });
+
+            return (true, null);
+        }
+
+        public async Task<(bool Success, string? Error)> MarkStopDepartedAsync(int tripStopId)
+        {
+            var ts = await _db.TripStops
+                .Include(x => x.Stop)
+                .FirstOrDefaultAsync(x => x.Id == tripStopId);
+
+            if (ts is null) return (false, "Stop not found.");
+            if (ts.Status != TripStopStatus.Arrived)
+                return (false, "Mark the stop as Arrived before departing.");
+
+            ts.Status = TripStopStatus.Departed;
+            ts.ActualDeparture = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            await _hubContext.Clients.Group(TripHub.GroupName(ts.TripId))
+                .SendAsync("ReceiveStopUpdate", new
+                {
+                    tripStopId = ts.Id,
+                    stopName = ts.Stop.Name,
+                    status = ts.Status.ToString(),
+                    actualDeparture = ts.ActualDeparture
+                });
 
             return (true, null);
         }

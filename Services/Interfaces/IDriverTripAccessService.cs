@@ -6,5 +6,6 @@ namespace Hopon.Api.Services.Interfaces
     {
         Task<DriverTripAccessResult> CheckDriverTripAccessAsync(int driverId, int tripId);
         Task<Trip?> GetActiveTripForDriverAsync(int driverId);
+        Task<Trip?> GetActiveTripWithStopsForDriverAsync(int driverId);
     }
 }
