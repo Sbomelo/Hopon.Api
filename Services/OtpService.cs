@@ -55,10 +55,10 @@ public class OtpService : IOtpService
         {
             PhoneNumber = phoneNumber,
             OtpCodeHash = hash,
-            CreatedAt = DateTime.Now,
+            CreatedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddMinutes(OtpExpiryMinutes),
             IsUsed = false,
-            AttemptCount =0
+            AttemptCount = 0
         };
 
         _db.OtpRequests.Add(otpRequest);

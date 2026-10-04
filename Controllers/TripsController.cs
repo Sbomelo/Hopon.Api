@@ -63,7 +63,7 @@ public class TripsController : ControllerBase
         return Ok(result);
     }
 
-    [HttpGet("{tripdId}/boarding-status")]
+    [HttpGet("{tripId}/boarding-status")]
     [RequireTripAccess]
     public async Task<IActionResult> GetBoardingStatus(int tripId)
     {

@@ -47,11 +47,13 @@ namespace Hopon.Api.Services
                     Status = ts.Status.ToString()
                 }).ToList(),
 
-                LastKnownLocation = lastLocation is null? null : new MapLocationDto { 
+                LastKnownLocation = lastLocation is null ? null : new MapLocationDto
+                {
                     Latitude = lastLocation.Latitude,
                     Longitude = lastLocation.Longitude,
-                    RecordedAt= lastLocation.RecordedAt
+                    RecordedAt = DateTime.SpecifyKind(lastLocation.RecordedAt, DateTimeKind.Utc)
                 }
+            }
 
             };
         }

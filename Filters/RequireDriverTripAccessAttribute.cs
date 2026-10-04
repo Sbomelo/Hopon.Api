@@ -1,25 +1,24 @@
-﻿using System.Security.Claims;
-using Hopon.Api.Services;
+﻿using Hopon.Api.Services;
+using Hopon.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using System.Security.Claims;
 
 namespace Hopon.Api.Filters;
 
 public class RequireDriverTripAccessAttribute : TypeFilterAttribute
 {
-    public RequireDriverTripAccessAttribute() : base(typeof(TripAccessFilter))
-    {
 
-    }
+    public RequireDriverTripAccessAttribute() : base(typeof(DriverTripAccessFilter)) { }
 }
 
 public class DriverTripAccessFilter : IAsyncActionFilter
 {
-    private readonly ITripAccessService _accessService;
+    private readonly IDriverTripAccessService _accessService;
 
-    public DriverTripAccessFilter(ITripAccessService accessService)
-    {
-        _accessService = accessService;
+    public DriverTripAccessFilter(IDriverTripAccessService accessService) 
+    { 
+        _accessService = accessService; 
     }
 
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
@@ -39,7 +38,7 @@ public class DriverTripAccessFilter : IAsyncActionFilter
             return;
         }
 
-        var result = await _accessService.CheckTripAccessAsync(driverId, tripId);
+        var result = await _accessService.CheckDriverTripAccessAsync(driverId, tripId);
 
         if (!result.HasAccess)
         {

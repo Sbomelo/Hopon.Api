@@ -44,7 +44,7 @@ namespace Hopon.Api.Controllers
                 ScheduledDeparture = trip.ScheduledDeparture,
                 ScheduledArrival = trip.ScheduledArrival,
                 ActualArrival = trip.ActualArrival,
-                ActualDeparture = trip.ActualArrival,
+                ActualDeparture = trip.ActualDeparture,
                 Status = trip.Status.ToString()
             });
         }

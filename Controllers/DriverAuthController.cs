@@ -19,7 +19,7 @@ namespace Hopon.Api.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<ActionResult<DriverAuthController>> Login([FromBody] DriverLoginDto dto)
+        public async Task<ActionResult<DriverAuthResponseDto>> Login([FromBody] DriverLoginDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto.Username) || string.IsNullOrWhiteSpace(dto.Password))
                 return BadRequest("Username and password are required");
