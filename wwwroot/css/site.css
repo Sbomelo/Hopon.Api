@@ -13,6 +13,7 @@
     --color-interactive-glow: var(--color-accent);
     --shadow-color: rgba(132, 204, 22, 0.35);
     --color-danger: #DC2626;
+    --color-success: #16A34A;
 }
 
 html[data-theme="dark"] {
@@ -30,6 +31,7 @@ html[data-theme="dark"] {
     --color-interactive-glow: var(--color-highlight);
     --shadow-color: rgba(245, 158, 11, 0.45);
     --color-danger: #F87171;
+    --color-success: #4ADE80;
 }
 
 * {
