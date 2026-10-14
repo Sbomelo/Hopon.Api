@@ -52,4 +52,31 @@ else
             }
         </tbody>
     </table>
+
+    @if (trip.Status is "Scheduled" or "Delayed" or "InProgress")
+    {
+        <h2 style="margin-top:2rem;">Issue Ticket</h2>
+
+        @if (Model.PassengerItems.Count == 0)
+        {
+            <p>Every active passenger already holds a ticket for this trip.</p>
+        }
+        else
+        {
+            <form method="post" asp-page-handler="IssueTicket" asp-route-id="@trip.TripId" class="hopon-form" style="max-width:480px;">
+                <div asp-validation-summary="All" class="text-error"></div>
+
+                <label>Passenger</label>
+                <select asp-for="Input.UserId" asp-items="Model.PassengerItems">
+                    <option value="">Select a passenger</option>
+                </select>
+
+                <label>Seat number (optional)</label>
+                <input asp-for="Input.SeatNumber" maxlength="10" placeholder="e.g. 14A" />
+
+                <button type="submit" class="btn-primary" style="margin-top:1rem;">Issue Ticket</button>
+            </form>
+        }
+    }
 }
+

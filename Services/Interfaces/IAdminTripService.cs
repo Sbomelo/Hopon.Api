@@ -13,5 +13,7 @@ namespace Hopon.Api.Services.Interfaces
         Task<List<SelectOptionDto>> GetRouteOptionsAsync();
         Task<List<SelectOptionDto>> GetBusOptionsAsync();
         Task<List<SelectOptionDto>> GetDriverOptionsAsync();
+        Task<(bool Success, string? Error, string? TicketReference)> IssueTicketAsync(int tripId, int userId, string? seatNumber);
+        Task<List<SelectOptionDto>> GetAvailablePassengerOptionsAsync(int tripId);
     }
 }

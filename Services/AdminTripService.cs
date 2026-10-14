@@ -3,13 +3,16 @@ using Hopon.Api.DTOs.Admin;
 using Hopon.Api.Models;
 using Hopon.Api.Models.Enums;
 using Hopon.Api.Services.Interfaces;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
 
 namespace Hopon.Api.Services
 {
     public class AdminTripService : IAdminTripService
     {
+
+        private const string ReferenceAlphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+        private const int ReferenceLength = 6;
         private readonly HoponDbContext _db;
 
         public AdminTripService(HoponDbContext db)
@@ -88,6 +91,7 @@ namespace Hopon.Api.Services
                 DriverName = trip.Driver?.FullName,
                 ScheduledArrival = trip.ScheduledArrival,
                 ScheduledDeparture = trip.ScheduledDeparture,
+                ActualDeparture = trip.ActualDeparture,
                 ActualArrival = trip.ActualArrival,
                 Status = trip.Status.ToString(),
                 Tickets = tickets.Select(tk => new AdminTicketSummaryDto
@@ -178,5 +182,91 @@ namespace Hopon.Api.Services
                             .Select(d => new SelectOptionDto{ Id = d.Id, Label = d.FullName })
                             .ToListAsync();
         }
+
+        public async Task<(bool Success, string? Error, string? TicketReference)> IssueTicketAsync(int tripId, int userId, string? seatNumber)
+        {
+            var trip = await _db.Trips
+                                .Include(t => t.Bus)
+                                .AsNoTracking()
+                                .FirstOrDefaultAsync(t => t.Id == tripId);
+
+            if (trip is null)
+                return (false, "Trip not found.", null);
+
+            if (trip.Status is TripStatus.Completed or TripStatus.Cancelled)
+                return (false, $"Tickets cannot be issued for a {trip.Status} trip.", null);
+
+            var passengerExists = await _db.Users.AnyAsync(u => u.Id == userId && u.IsActive);
+            if (!passengerExists)
+                return (false, "Passenger not found.", null);
+
+            // Includes inactive tickets: the (UserId, TripId) unique index covers them too
+            var alreadyTicketed = await _db.Tickets.AnyAsync(t => t.TripId == tripId && t.UserId == userId);
+            if (alreadyTicketed)
+                return (false, "This passenger already has a ticket for this trip.", null);
+
+            if (trip.Bus.Capacity is int capacity)
+            {
+                var sold = await _db.Tickets.CountAsync(t => t.TripId == tripId && t.IsActive);
+                if (sold >= capacity)
+                    return (false, "This bus is full.", null);
+            }
+
+            var seat = string.IsNullOrWhiteSpace(seatNumber) ? null : seatNumber.Trim().ToUpperInvariant();
+
+            if (seat is not null)
+            {
+                var seatTaken = await _db.Tickets.AnyAsync(t => t.TripId == tripId && t.IsActive && t.SeatNumber == seat);
+                if (seatTaken)
+                    return (false, $"Seat {seat} is already taken on this trip.", null);
+            }
+
+            var reference = await GenerateUniqueTicketReferenceAsync();
+
+            _db.Tickets.Add(new Ticket
+            {
+                TicketReference = reference,
+                UserId = userId,
+                TripId = tripId,
+                SeatNumber = seat
+            });
+
+            await _db.SaveChangesAsync();
+
+            return (true, null, reference);
+        }
+
+        public async Task<List<SelectOptionDto>> GetAvailablePassengerOptionsAsync(int tripId)
+        {
+            return await _db.Users
+                            .Where(u => u.IsActive &&
+                                        !_db.Tickets.Any(t => t.TripId == tripId && t.UserId == u.Id))
+                            .AsNoTracking()
+                            .OrderBy(u => u.FullName)
+                            .Select(u => new SelectOptionDto
+                            {
+                                Id = u.Id,
+                                Label = u.FullName + " (" + u.PhoneNumber + ")"
+                            })
+                            .ToListAsync();
+        }
+
+        private async Task<string> GenerateUniqueTicketReferenceAsync()
+        {
+            for (var attempt = 0; attempt < 5; attempt++)
+            {
+                var chars = new char[ReferenceLength];
+                for (var i = 0; i < chars.Length; i++)
+                    chars[i] = ReferenceAlphabet[RandomNumberGenerator.GetInt32(ReferenceAlphabet.Length)];
+
+                var reference = $"HOP-{new string(chars)}";
+
+                if (!await _db.Tickets.AnyAsync(t => t.TicketReference == reference))
+                    return reference;
+            }
+
+            throw new InvalidOperationException("Could not generate a unique ticket reference.");
+        }
+
     }
 }
