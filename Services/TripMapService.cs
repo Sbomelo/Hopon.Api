@@ -53,8 +53,6 @@ namespace Hopon.Api.Services
                     Longitude = lastLocation.Longitude,
                     RecordedAt = DateTime.SpecifyKind(lastLocation.RecordedAt, DateTimeKind.Utc)
                 }
-            }
-
             };
         }
     }
