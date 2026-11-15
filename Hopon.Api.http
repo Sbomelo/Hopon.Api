@@ -1,6 +1,38 @@
 @Hopon.Api_HostAddress = http://localhost:5101
 
-GET {{Hopon.Api_HostAddress}}/weatherforecast/
+# Set phoneNumber to an existing Users.PhoneNumber in your local database.
+@phoneNumber = REPLACE_WITH_LOCAL_PASSENGER_PHONE
+@code = REPLACE_WITH_DEV_ONLY_CODE
+@token = REPLACE_WITH_PASSENGER_TOKEN
+@driverPassword = REPLACE_WITH_LOCAL_DRIVER_PASSWORD
+
+### Request OTP (Development returns devOnlyCode for an existing user)
+POST {{Hopon.Api_HostAddress}}/api/auth/otp/request
+Content-Type: application/json
+
+{
+  "phoneNumber": "{{phoneNumber}}"
+}
+
+### Verify OTP (copy devOnlyCode into code, then the response token into token)
+POST {{Hopon.Api_HostAddress}}/api/auth/otp/verify
+Content-Type: application/json
+
+{
+  "phoneNumber": "{{phoneNumber}}",
+  "code": "{{code}}"
+}
+
+### Passenger trips
+GET {{Hopon.Api_HostAddress}}/api/trips/my-trips
+Authorization: Bearer {{token}}
 Accept: application/json
 
-###
+### Driver login (the seeded driver's plaintext password is not supplied)
+POST {{Hopon.Api_HostAddress}}/api/driver/auth/login
+Content-Type: application/json
+
+{
+  "username": "driver1",
+  "password": "{{driverPassword}}"
+}
