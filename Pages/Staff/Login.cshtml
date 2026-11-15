@@ -1,0 +1,19 @@
+@page
+@model Hopon.Api.Pages.Staff.LoginModel
+@{
+    ViewData["Title"] = "Staff login";
+}
+<h1>Staff login</h1>
+<form method="post" class="hopon-form staff-form">
+    <div asp-validation-summary="All" class="text-error" role="alert"></div>
+    <label asp-for="Input.Role">I am a</label>
+    <select asp-for="Input.Role">
+        <option value="Admin">Admin</option>
+        <option value="Driver">Driver</option>
+    </select>
+    <label asp-for="Input.Username">Username</label>
+    <input asp-for="Input.Username" autocomplete="username" />
+    <label asp-for="Input.Password">Password</label>
+    <input asp-for="Input.Password" autocomplete="current-password" />
+    <button type="submit" class="btn-primary">Log in</button>
+</form>

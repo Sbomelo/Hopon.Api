@@ -1,4 +1,4 @@
-﻿using Hopon.Api.Data;
+using Hopon.Api.Data;
 using Hopon.Api.Hubs;
 using Hopon.Api.Models;
 using Hopon.Api.Models.Enums;
@@ -110,11 +110,11 @@ namespace Hopon.Api.Services
             return (true, null);
         }
 
-        public async Task<(bool Success, string? Error)> MarkStopArrivedAsync(int tripStopId)
+        public async Task<(bool Success, string? Error)> MarkStopArrivedAsync(Trip trip, int tripStopId)
         {
             var ts = await _db.TripStops
                 .Include(x => x.Stop)
-                .FirstOrDefaultAsync(x => x.Id == tripStopId);
+                .FirstOrDefaultAsync(x => x.Id == tripStopId && x.TripId == trip.Id);
 
             if (ts is null) return (false, "Stop not found.");
             if (ts.Status != TripStopStatus.Pending)
@@ -136,11 +136,11 @@ namespace Hopon.Api.Services
             return (true, null);
         }
 
-        public async Task<(bool Success, string? Error)> MarkStopDepartedAsync(int tripStopId)
+        public async Task<(bool Success, string? Error)> MarkStopDepartedAsync(Trip trip, int tripStopId)
         {
             var ts = await _db.TripStops
                 .Include(x => x.Stop)
-                .FirstOrDefaultAsync(x => x.Id == tripStopId);
+                .FirstOrDefaultAsync(x => x.Id == tripStopId && x.TripId == trip.Id);
 
             if (ts is null) return (false, "Stop not found.");
             if (ts.Status != TripStopStatus.Arrived)

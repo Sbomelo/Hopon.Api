@@ -1,4 +1,4 @@
-﻿using Hopon.Api.Models;
+using Hopon.Api.Models;
 
 namespace Hopon.Api.Services.Interfaces
 {
@@ -8,9 +8,9 @@ namespace Hopon.Api.Services.Interfaces
         Task<(bool Success, string? Error)> ReportDelayedAsync(Trip trip, string reason);
         Task<(bool Success, string? Error)> ResumeFromDelayAsync(Trip trip);
         Task<(bool Success, string? Error)> CompletedAsync(Trip trip);
-        Task<(bool Success, string? Error)> RecordLocationAsync(Trip trip, double longitude, double latitude);
-        Task<(bool Success, string? Error)> MarkStopArrivedAsync(int tripStopId);
-        Task<(bool Success, string? Error)> MarkStopDepartedAsync(int tripStopId);
+        Task<(bool Success, string? Error)> RecordLocationAsync(Trip trip, double latitude, double longitude);
+        Task<(bool Success, string? Error)> MarkStopArrivedAsync(Trip trip, int tripStopId);
+        Task<(bool Success, string? Error)> MarkStopDepartedAsync(Trip trip, int tripStopId);
 
     }
 }
