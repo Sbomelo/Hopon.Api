@@ -1,4 +1,4 @@
-﻿:root {
+:root {
     --color-primary: #0F766E;
     --color-accent: #84CC16;
     --color-highlight: #38BDF8;
@@ -50,6 +50,8 @@ h1, h2, h3 {
 }
 
 .hopon-header {
+    flex-wrap: wrap;
+    gap: 1rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -216,6 +218,11 @@ table.hopon-table {
     }
 
 .text-error {
-    color: #DC2626;
+    color: var(--color-danger);
     font-size: 0.9rem;
 }
+
+.staff-account { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.staff-form { max-width: 480px; }
+.staff-form .btn-primary { margin-top: 1rem; }
+.staff-table { overflow-x: auto; }

@@ -1,0 +1,14 @@
+@using Hopon.Api.Services
+@using Microsoft.AspNetCore.Authentication
+@{
+    var staff = (await Context.AuthenticateAsync(StaffCookieEvents.Scheme)).Principal;
+}
+@if (staff?.Identity?.IsAuthenticated == true)
+{
+    <div class="staff-account">
+        <span>@staff.Identity.Name</span>
+        <form method="post" asp-page="/Staff/Logout">
+            <button type="submit" class="btn-primary">Logout</button>
+        </form>
+    </div>
+}

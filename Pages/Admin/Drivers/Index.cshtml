@@ -1,0 +1,29 @@
+@page
+@model Hopon.Api.Pages.Admin.Drivers.IndexModel
+@{
+    ViewData["Title"] = "Drivers";
+}
+<h1>Drivers</h1>
+<p><a asp-page="Create" class="btn-secondary">Create driver</a></p>
+<div class="staff-table">
+    <table class="hopon-table">
+        <thead><tr><th>Name</th><th>Phone</th><th>Username</th><th>Active</th><th>Actions</th></tr></thead>
+        <tbody>
+        @foreach (var driver in Model.Drivers)
+        {
+            <tr>
+                <td>@driver.FullName</td><td>@driver.PhoneNumber</td><td>@driver.Username</td>
+                <td>@(driver.IsActive ? "Yes" : "No")</td>
+                <td>
+                    <form method="post" asp-page-handler="SetActive">
+                        <input type="hidden" name="id" value="@driver.Id" />
+                        <input type="hidden" name="isActive" value="@((!driver.IsActive).ToString().ToLowerInvariant())" />
+                        <button type="submit" class="btn-primary">@(driver.IsActive ? "Deactivate" : "Reactivate")</button>
+                    </form>
+                    <a asp-page="ResetPassword" asp-route-id="@driver.Id">Reset password</a>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

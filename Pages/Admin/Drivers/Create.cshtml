@@ -1,0 +1,19 @@
+@page
+@model Hopon.Api.Pages.Admin.Drivers.CreateModel
+@{
+    ViewData["Title"] = "Create driver";
+}
+<h1>Create driver</h1>
+<form method="post" class="hopon-form staff-form">
+    <div asp-validation-summary="All" class="text-error" role="alert"></div>
+    <label asp-for="Input.FullName">Full name</label>
+    <input asp-for="Input.FullName" autocomplete="name" />
+    <label asp-for="Input.PhoneNumber">Phone number</label>
+    <input asp-for="Input.PhoneNumber" autocomplete="tel" />
+    <label asp-for="Input.Username">Username</label>
+    <input asp-for="Input.Username" autocomplete="off" />
+    <label asp-for="Input.Password">Initial password (at least 8 characters)</label>
+    <input asp-for="Input.Password" autocomplete="new-password" minlength="8" />
+    <button type="submit" class="btn-primary">Create driver</button>
+</form>
+<p><a asp-page="Index">Back to drivers</a></p>

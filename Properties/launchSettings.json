@@ -1,12 +1,13 @@
 {
   "profiles": {
-    "Hopon.Api": {
+    "http": {
       "commandName": "Project",
-      "launchBrowser": true,
+      "dotnetRunMessages": true,
+      "launchBrowser": false,
+      "applicationUrl": "http://localhost:5101",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
-      },
-      "applicationUrl": "https://localhost:55035;http://localhost:55036"
+      }
     }
   }
 }

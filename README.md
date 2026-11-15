@@ -19,7 +19,7 @@ This leads to real, everyday problems:
  
 **Hopon** is a web-based system that gives bus passengers real-time access to their trip status, ETA notifications, and stop reminders — all secured behind their purchased ticket.
  
-Key capabilities:
+Product goals (not all implemented; see `docs/HANDOFF.md` section A for verified status):
  
 - **OTP-based login** — no account creation needed. Passengers log in using their phone number and a one-time PIN sent when they buy their ticket.
 - **Live bus location** — see where the bus is on a map, restricted to your specific trip only.
@@ -49,8 +49,8 @@ This project serves two purposes:
 | Database | SQL Server |
 | Realtime | SignalR |
 | Authentication | JWT + OTP/PIN login |
-| Maps | Leaflet.js + OpenStreetMap |
-| SMS Notifications | Twilio (SMS fallback) |
+| Maps | MapLibre GL JS + OpenFreeMap |
+| SMS Notifications | Twilio (planned; not wired) |
 | Hosting | Azure App Service / IIS |
  
 **Why the frontend is split:**

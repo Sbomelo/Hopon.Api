@@ -4,6 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>hopon-api-local-development</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,6 +21,12 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="tests/**/*.cs" />
+    <Content Remove="tests/**" />
+    <None Remove="tests/**" />
   </ItemGroup>
 
   <ItemGroup>

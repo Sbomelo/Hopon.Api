@@ -24,7 +24,17 @@ builder.Services.AddSwaggerGen(options =>
 
 //REGISTER SERVICES
 builder.Services.AddControllers();
-builder.Services.AddRazorPages();
+builder.Services.AddRazorPages(options =>
+{
+    options.Conventions.AuthorizeFolder("/Admin", "AdminOnly");
+    options.Conventions.AuthorizeFolder("/Driver", "DriverOnly");
+    options.Conventions.AuthorizeFolder("/Staff", "StaffOnly");
+    options.Conventions.AllowAnonymousToPage("/Staff/Login");
+    options.Conventions.AllowAnonymousToPage("/Staff/Denied");
+});
+builder.Services.AddScoped<StaffSeeder>();
+builder.Services.AddScoped<AdminDriverService>();
+builder.Services.AddScoped<StaffCookieEvents>();
 builder.Services.AddSignalR();
 
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
@@ -85,8 +95,29 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Authorization
-builder.Services.AddAuthorization();
+builder.Services.AddAuthentication().AddCookie(StaffCookieEvents.Scheme, options =>
+{
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+        ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
+    options.ExpireTimeSpan = TimeSpan.FromHours(8);
+    options.SlidingExpiration = true;
+    options.LoginPath = "/Staff/Login";
+    options.AccessDeniedPath = "/Staff/Denied";
+    options.EventsType = typeof(StaffCookieEvents);
+});
+
+// Razor policies explicitly use cookies; APIs retain the JWT defaults above.
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("StaffOnly", policy => policy
+        .AddAuthenticationSchemes(StaffCookieEvents.Scheme).RequireAuthenticatedUser());
+    options.AddPolicy("AdminOnly", policy => policy
+        .AddAuthenticationSchemes(StaffCookieEvents.Scheme).RequireRole("Admin"));
+    options.AddPolicy("DriverOnly", policy => policy
+        .AddAuthenticationSchemes(StaffCookieEvents.Scheme).RequireRole("Driver"));
+});
 
 builder.Services.AddCors(options =>
 {
@@ -103,6 +134,11 @@ builder.Services.AddCors(options =>
 
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    await scope.ServiceProvider.GetRequiredService<StaffSeeder>().SeedAsync();
+}
 
 if (app.Environment.IsDevelopment())
 {
@@ -124,3 +160,5 @@ app.MapRazorPages();
 app.MapHub<TripHub>("/hubs/trip");
 
 app.Run();
+
+public partial class Program { }
