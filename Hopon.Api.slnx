@@ -1,3 +1,6 @@
 <Solution>
+  <Folder Name="/tests/">
+    <Project Path="tests/Hopon.Api.Tests/Hopon.Api.Tests.csproj" />
+  </Folder>
   <Project Path="Hopon.Api.csproj" />
 </Solution>

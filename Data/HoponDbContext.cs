@@ -10,6 +10,7 @@ public class HoponDbContext : DbContext
     public DbSet<User> Users { get; set; } = null!;
     public DbSet<EmergencyContact> EmergencyContacts { get; set; } = null!;
     public DbSet<Driver> Drivers { get; set; } = null!;
+    public DbSet<AdminUser> AdminUsers { get; set; } = null!;
     public DbSet<Bus> Buses { get; set; } = null!;
     public DbSet<Stop> Stops { get; set; } = null!;
     public DbSet<BusRoute> BusRoutes { get; set; } = null!;
@@ -39,6 +40,13 @@ public class HoponDbContext : DbContext
                 .WithOne(u => u.EmergencyContact)
                 .HasForeignKey<EmergencyContact>(ec => ec.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AdminUser>(entity =>
+        {
+            entity.HasIndex(a => a.Username).IsUnique();
+            entity.Property(a => a.Username).HasMaxLength(100).IsRequired();
+            entity.Property(a => a.PasswordHash).HasMaxLength(255).IsRequired();
+        });
 
         //Driver
         modelBuilder.Entity<Driver>(entity =>
@@ -189,7 +197,7 @@ public class HoponDbContext : DbContext
                 Id = 1, 
                 FullName = "Sibonelo Vimba", 
                 PhoneNumber = "+27789689875",
-                CreatedAt = DateTime.UtcNow, 
+                CreatedAt = new DateTime(2026, 8, 4, 13, 1, 46, 336, DateTimeKind.Utc).AddTicks(9378),
                 IsActive = true
                 },
 
@@ -197,7 +205,7 @@ public class HoponDbContext : DbContext
                 Id = 2,
                 FullName = "Lumiyo Vimba",
                 PhoneNumber = "+27835944077",
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = new DateTime(2026, 8, 4, 13, 1, 46, 336, DateTimeKind.Utc).AddTicks(9382),
                 IsActive = true
             },
 
@@ -206,7 +214,7 @@ public class HoponDbContext : DbContext
                 Id = 3,
                 FullName = "Lee-Ann Damane",
                 PhoneNumber = "+27814629100",
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = new DateTime(2026, 8, 4, 13, 1, 46, 336, DateTimeKind.Utc).AddTicks(9384),
                 IsActive = true
             }
 

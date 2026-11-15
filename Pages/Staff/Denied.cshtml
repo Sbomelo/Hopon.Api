@@ -1,0 +1,8 @@
+@page
+@{
+    ViewData["Title"] = "Access denied";
+    Response.StatusCode = StatusCodes.Status403Forbidden;
+}
+<h1>Access denied</h1>
+<p>Your staff role does not have access to this page.</p>
+<a asp-page="/Staff/Login" class="btn-secondary">Log in with another account</a>

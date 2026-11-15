@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Hopon.Api.Data;
 using Hopon.Api.DTOs.Drivers;
 using Hopon.Api.Models;
@@ -14,7 +15,7 @@ namespace Hopon.Api.Pages.Driver
         private readonly IDriverTripService _tripService;
         private readonly HoponDbContext _db;
 
-        private const int DemoDriverId = 2;
+        private int DriverId => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : 0;
 
         public DriverTripPageDto? Trip { get; set; }
         public string? ActionMessage { get; set; }
@@ -49,13 +50,21 @@ namespace Hopon.Api.Pages.Driver
 
         public async Task<IActionResult> OnPostMarkArrivedAsync()
         {
-            var (ok, err) = await _tripService.MarkStopArrivedAsync(TripStopId);
+            var trip = await LoadTrackedTripAsync();
+            if (trip is null) return await NoTripResult();
+
+            var (ok, err) = await _tripService.MarkStopArrivedAsync(trip, TripStopId);
+            if (!ok) Response.StatusCode = StatusCodes.Status400BadRequest;
             return await Refresh(ok, ok ? "✅ Arrived at stop." : err!);
         }
 
         public async Task<IActionResult> OnPostMarkDepartedAsync()
         {
-            var (ok, err) = await _tripService.MarkStopDepartedAsync(TripStopId);
+            var trip = await LoadTrackedTripAsync();
+            if (trip is null) return await NoTripResult();
+
+            var (ok, err) = await _tripService.MarkStopDepartedAsync(trip, TripStopId);
+            if (!ok) Response.StatusCode = StatusCodes.Status400BadRequest;
             return await Refresh(ok, ok ? "🚏 Departed from stop." : err!);
         }
 
@@ -96,11 +105,11 @@ namespace Hopon.Api.Pages.Driver
         }
 
         private async Task<Trip?> LoadTrackedTripAsync() =>
-            await _accessService.GetActiveTripForDriverAsync(DemoDriverId);
+            await _accessService.GetActiveTripForDriverAsync(DriverId);
 
         private async Task<DriverTripPageDto?> BuildPageDtoAsync()
         {
-            var trip = await _accessService.GetActiveTripWithStopsForDriverAsync(DemoDriverId);
+            var trip = await _accessService.GetActiveTripWithStopsForDriverAsync(DriverId);
             if (trip is null) return null;
 
             var lastLocation = await _db.LocationUpdates
@@ -170,7 +179,7 @@ namespace Hopon.Api.Pages.Driver
         {
             Trip = null;
             ActionSuccess = false;
-            ActionMessage = "No active trip found. Make sure a trip is assigned and the demo is seeded.";
+            ActionMessage = "No active trip is assigned to you.";
             return Page();
         }
     }

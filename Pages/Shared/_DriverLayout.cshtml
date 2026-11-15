@@ -1,4 +1,4 @@
-﻿@{
+@{
     var theme = Context.Request.Cookies["hopon-theme"] == "dark" ? "dark" : "light";
 }
 <!DOCTYPE html>
@@ -14,6 +14,7 @@
 <body>
     <header class="hopon-header">
         <div class="hopon-brand">Hopon <span>Driver</span></div>
+        <partial name="/Pages/Shared/_StaffAccount.cshtml" />
         <button id="theme-toggle" class="theme-toggle" type="button">Theme</button>
     </header>
     <main class="hopon-main" style="padding: 1rem; max-width: 540px;">
