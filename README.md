@@ -1,4 +1,65 @@
 # Hopon
+
+## Local setup
+
+Requires the .NET 8 runtime (and an SDK that supports the `.slnx` solution), SQL Server, and Node/npm for the passenger frontend. Run these commands from the backend directory. Hopon's existing `UserSecretsId` is shared by local runs; `init` is safe to repeat.
+
+```powershell
+dotnet user-secrets init
+# Generate a new private signing key; do not paste a key from Git history.
+$jwtKey = [Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
+dotnet user-secrets set 'Jwt:Key' $jwtKey
+dotnet user-secrets set 'ConnectionStrings:HoponDb' 'Server=localhost;Database=HoponDb;Trusted_Connection=True;TrustServerCertificate=True'
+dotnet user-secrets set 'Admin:Username' 'your-local-admin-name'
+dotnet user-secrets set 'Admin:Password' 'replace-with-a-private-strong-password'
+dotnet ef database update -- --environment Development
+dotnet run --launch-profile http
+```
+
+Choose your own admin credentials before running the commands. Admin settings bootstrap the first account only; changing them does not reset an existing account. Development can generate a fallback admin if credentials are absent; configure them explicitly for predictable logins. User-secrets stays outside Git and is loaded only in Development. Never place real secrets in committed appsettings files or frontend `VITE_*` settings.
+
+Required local keys: `Jwt:Key` (at least 32 characters) and `ConnectionStrings:HoponDb`. Configure `Admin:Username` and `Admin:Password` to bootstrap an admin. Future Task 6 keys are `Twilio:AccountSid`, `Twilio:AuthToken`, and `Twilio:FromNumber`; they are not consumed yet. Non-secret JWT issuer/audience and an eight-hour lifetime remain in appsettings.json. Startup validates JWT, CORS and OTP options before staff database bootstrap. JWT expiry must be between 0.01 and 8760 hours.
+
+In the sibling frontend directory, run `npm install` and `npm run dev`. Open `http://localhost:5173`; backend Swagger is `http://localhost:5101/swagger`. Development allows the `http://localhost:5173` CORS origin and exposes the demo OTP. Use any seeded passenger number listed in AGENTS.md. SMS delivery is still deferred. The reproducible active-trip demo remains Task 12.
+
+### Hosting configuration
+
+[.env.example](.env.example) lists environment variable names such as `Jwt__Key`, `ConnectionStrings__HoponDb`, `Admin__Username`, and `Admin__Password`. ASP.NET Core reads environment variables directly; it does not automatically read `.env`. Supply real values through the host's settings. For a separate passenger origin set `Cors__AllowedOrigins__0=https://your-passenger-host.example` (and indexed entries for more origins). Omit origin variables to deny all cross-origin requests. Do not set blank origin entries. Each origin must have HTTP/HTTPS scheme, no wildcard, path, or trailing slash. Same-origin hosting does not require CORS.
+
+Production has an empty CORS allowlist, OTP response exposure disabled, Swagger disabled, HTTPS redirection to port 443 and HSTS. `Otp__ExposeCodeInResponse=true` remains an explicit hosted-demo opt-in. No OTP code is logged outside Development.
+
+Forwarded headers (`X-Forwarded-For` and `X-Forwarded-Proto`) run before HTTPS handling, using ASP.NET Core's default loopback proxy trust. For Azure Linux App Service behind its managed proxy, set `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` and enable HTTPS Only in Azure. That platform flag broadens proxy trust: use it only where network access ensures requests come through the trusted proxy, never on a directly exposed Kestrel server. IIS uses its integration support. For another proxy, configure its actual trusted addresses instead of enabling blanket trust. See [Microsoft's proxy hosting guidance](https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/proxy-load-balancer?view=aspnetcore-8.0).
+
+### Configuration checks
+
+```powershell
+dotnet build
+dotnet test --no-build
+```
+
+The configuration tests cover missing/short signing keys, issuer/audience/expiry validation, invalid CORS origins, Development preflight, Production denying unconfigured origins, hidden Swagger, HTTPS/HSTS and trusted forwarded headers. Existing OTP → map-data → SignalR tests cover login with the typed JWT configuration.
+
+To check missing-key startup without changing user-secrets, start a fresh PowerShell in the backend directory:
+
+```powershell
+# Production does not load Development user-secrets. The empty command-line key
+# overrides any inherited environment value and fails before database access.
+dotnet run --no-build --no-launch-profile -- --environment Production --Jwt:Key=
+```
+
+Expect `Jwt:Key is required`; no signing key value is included in the validation message. To test a short key, pass `--Jwt:Key=short` and expect `Jwt:Key must contain at least 32 characters`. Resume normal local use with `dotnet run --launch-profile http` in your usual shell.
+
+Development CORS preflight (with Hopon running):
+
+```powershell
+Invoke-WebRequest -Method Options -Uri http://localhost:5101/api/auth/otp/request -Headers @{ Origin = 'http://localhost:5173'; 'Access-Control-Request-Method' = 'POST'; 'Access-Control-Request-Headers' = 'content-type' }
+```
+
+Expect HTTP 204 and `Access-Control-Allow-Origin: http://localhost:5173`. An unconfigured origin receives no allow-origin header.
+
+### Historical credentials
+
+Task 0 found a historical committed JWT key and a Windows-auth connection string (no SQL password). The owner must rotate any signing key derived from that value in each environment; existing tokens become invalid. Change any database password that was committed elsewhere or reused from exposed credentials; this audit did not find one in the historical Windows-auth string. Git history has not been rewritten.
  
  Real-time trip notifications and bus tracking for intercity bus passengers in South Africa.
  

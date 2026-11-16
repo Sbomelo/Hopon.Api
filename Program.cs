@@ -8,8 +8,23 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using System.Text;
 using System.Security.Claims;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddOptions<JwtOptions>().BindConfiguration("Jwt")
+    .ValidateDataAnnotations().ValidateOnStart();
+builder.Services.AddOptions<Hopon.Api.Services.CorsOptions>().BindConfiguration("Cors")
+    .Validate(options => options.HasValidOrigins(),
+        "Cors:AllowedOrigins must contain only HTTP/HTTPS origins without paths, trailing slashes or wildcards.")
+    .ValidateOnStart();
+builder.Services.AddOptions<OtpOptions>().BindConfiguration("Otp").ValidateOnStart();
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+});
+builder.Services.AddHttpsRedirection(options => options.HttpsPort = 443);
 
 //Swagger UI
 builder.Services.AddEndpointsApiExplorer();
@@ -43,8 +58,6 @@ builder.Services.AddDbContext<HoponDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("HoponDb")));
 
 builder.Services.AddScoped<IOtpService, OtpService>();
-builder.Services.Configure<OtpOptions>(builder.Configuration.GetSection("Otp"));
-builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<ITripAccessService, TripAccessService>();
 builder.Services.AddScoped<ITripDashboardService, TripDashboardService>();
 builder.Services.AddScoped<IAdminTripService, AdminTripService>();
@@ -59,28 +72,29 @@ builder.Services.AddScoped<IEmergencyContactService, EmergencyContactService>();
 
 
 //JWT CONFIGURATION
-var jwtSection = builder.Configuration.GetSection("Jwt");
-
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
-.AddJwtBearer(options =>
+.AddJwtBearer();
+builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+.Configure<IOptions<JwtOptions>>((options, jwtOptions) =>
 {
+    var jwt = jwtOptions.Value;
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
-        ValidIssuer = jwtSection["Issuer"],
+        ValidIssuer = jwt.Issuer,
         
         ValidateAudience = true,
-        ValidAudience = jwtSection["Audience"],
+        ValidAudience = jwt.Audience,
 
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
         ClockSkew = TimeSpan.FromMinutes(1),
         RoleClaimType = ClaimTypes.Role,
-        IssuerSigningKey = new SymmetricSecurityKey( Encoding.UTF8.GetBytes(jwtSection["Key"]!))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key))
     };
 
     options.Events = new JwtBearerEvents
@@ -124,12 +138,14 @@ builder.Services.AddAuthorization(options =>
         .AddAuthenticationSchemes(StaffCookieEvents.Scheme).RequireRole("Driver"));
 });
 
-builder.Services.AddCors(options =>
+builder.Services.AddCors();
+builder.Services.AddOptions<Microsoft.AspNetCore.Cors.Infrastructure.CorsOptions>()
+.Configure<IOptions<Hopon.Api.Services.CorsOptions>>((options, corsOptions) =>
 {
     options.AddPolicy("AllowPassengerApp",
         policy =>
         {
-            policy.WithOrigins("http://localhost:5173")
+            policy.WithOrigins(corsOptions.Value.AllowedOrigins)
                         .AllowAnyHeader()
                         .AllowAnyMethod()
                         .AllowCredentials();
@@ -140,9 +156,19 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Validate before the staff bootstrap touches the database.
+app.Services.GetRequiredService<IStartupValidator>().Validate();
+
 using (var scope = app.Services.CreateScope())
 {
     await scope.ServiceProvider.GetRequiredService<StaffSeeder>().SeedAsync();
+}
+
+app.UseForwardedHeaders();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+    app.UseHttpsRedirection();
 }
 
 if (app.Environment.IsDevelopment())
