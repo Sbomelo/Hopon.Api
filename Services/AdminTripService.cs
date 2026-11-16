@@ -78,6 +78,7 @@ namespace Hopon.Api.Services
             var tickets = await _db.Tickets
                                 .Where(tk => tk.TripId == tripId)
                                 .Include(tk => tk.User)
+                                .Include(tk => tk.DestinationTripStop).ThenInclude(ts => ts!.Stop)
                                 .AsNoTracking()
                                 .ToListAsync();
             return new AdminTripDetailDto
@@ -99,6 +100,8 @@ namespace Hopon.Api.Services
                     TicketReference = tk.TicketReference,
                     PassengerName = tk.User.FullName,
                     SeatNumber = tk.SeatNumber,
+                    DestinationStopName = tk.DestinationTripStop?.Stop.Name,
+                    DestinationScheduledArrival = tk.DestinationTripStop?.ScheduledArrival,
                     IsActive = tk.IsActive
                 }).ToList()
             };
@@ -107,6 +110,7 @@ namespace Hopon.Api.Services
 
         public async Task<int> CreateTripAsync(int busRouteId, int busId, int? driverId, DateTime scheduledDeparture, DateTime scheduledArrival)
         {
+            var stops = await GetRouteStopsAsync(busRouteId);
             var trip = new Trip
             {
                 BusRouteId = busRouteId,
@@ -114,7 +118,8 @@ namespace Hopon.Api.Services
                 DriverId = driverId,
                 ScheduledDeparture = scheduledDeparture,
                 ScheduledArrival = scheduledArrival,
-                Status = TripStatus.Scheduled
+                Status = TripStatus.Scheduled,
+                TripStops = TripStopSchedule.Create(stops, scheduledDeparture, scheduledArrival)
             };
 
             _db.Trips.Add(trip);
@@ -125,10 +130,31 @@ namespace Hopon.Api.Services
 
         public async Task<bool> UpdateTripAsync(int tripId, int busRouteId, int busId, int? driverId, DateTime scheduledDeparture, DateTime scheduledArrival)
         {
-            var trip = await _db.Trips.FirstOrDefaultAsync(t => t.Id == tripId);
+            await using var transaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var trip = await _db.Trips.Include(t => t.TripStops).ThenInclude(ts => ts.Stop)
+                .FirstOrDefaultAsync(t => t.Id == tripId);
 
             if (trip is null)
                 return false;
+
+            if (scheduledArrival <= scheduledDeparture)
+                throw new InvalidOperationException("Arrival must be after departure.");
+
+            if (trip.BusRouteId != busRouteId)
+            {
+                if (await _db.Tickets.AnyAsync(t => t.TripId == tripId))
+                    throw new InvalidOperationException("The route cannot be changed because this trip already has tickets.");
+
+                var stops = await GetRouteStopsAsync(busRouteId);
+                var replacements = TripStopSchedule.Create(stops, scheduledDeparture, scheduledArrival);
+                _db.TripStops.RemoveRange(trip.TripStops);
+                await _db.SaveChangesAsync();
+                trip.TripStops = replacements;
+            }
+            else if (trip.ScheduledDeparture != scheduledDeparture || trip.ScheduledArrival != scheduledArrival)
+            {
+                TripStopSchedule.RescalePending(trip.TripStops.ToList(), scheduledDeparture, scheduledArrival);
+            }
 
             trip.BusRouteId = busRouteId;
             trip.BusId = busId;
@@ -138,6 +164,7 @@ namespace Hopon.Api.Services
 
             await _db.SaveChangesAsync();
 
+            await transaction.CommitAsync();
             return true;
         }
 
@@ -183,7 +210,7 @@ namespace Hopon.Api.Services
                             .ToListAsync();
         }
 
-        public async Task<(bool Success, string? Error, string? TicketReference)> IssueTicketAsync(int tripId, int userId, string? seatNumber)
+        public async Task<(bool Success, string? Error, string? TicketReference)> IssueTicketAsync(int tripId, int userId, string? seatNumber, int destinationTripStopId, int? originTripStopId = null)
         {
             var trip = await _db.Trips
                                 .Include(t => t.Bus)
@@ -195,6 +222,18 @@ namespace Hopon.Api.Services
 
             if (trip.Status is TripStatus.Completed or TripStatus.Cancelled)
                 return (false, $"Tickets cannot be issued for a {trip.Status} trip.", null);
+
+            var stops = await _db.TripStops.Where(ts => ts.TripId == tripId)
+                .OrderBy(ts => ts.SequenceOrder).AsNoTracking().ToListAsync();
+            var origin = originTripStopId.HasValue
+                ? stops.FirstOrDefault(ts => ts.Id == originTripStopId.Value) : stops.FirstOrDefault();
+            var destination = stops.FirstOrDefault(ts => ts.Id == destinationTripStopId);
+            if (origin is null)
+                return (false, "Select a boarding stop belonging to this trip.", null);
+            if (destination is null)
+                return (false, "Select a destination stop belonging to this trip.", null);
+            if (destination.SequenceOrder <= origin.SequenceOrder)
+                return (false, "Destination must be after the boarding stop.", null);
 
             var passengerExists = await _db.Users.AnyAsync(u => u.Id == userId && u.IsActive);
             if (!passengerExists)
@@ -228,6 +267,8 @@ namespace Hopon.Api.Services
                 TicketReference = reference,
                 UserId = userId,
                 TripId = tripId,
+                OriginTripStopId = origin.Id,
+                DestinationTripStopId = destination.Id,
                 SeatNumber = seat
             });
 
@@ -249,6 +290,20 @@ namespace Hopon.Api.Services
                                 Label = u.FullName + " (" + u.PhoneNumber + ")"
                             })
                             .ToListAsync();
+        }
+
+        public async Task<List<SelectOptionDto>> GetTripStopOptionsAsync(int tripId)
+        {
+            return await _db.TripStops.Where(ts => ts.TripId == tripId)
+                .OrderBy(ts => ts.SequenceOrder).AsNoTracking()
+                .Select(ts => new SelectOptionDto { Id = ts.Id, Label = ts.Stop.Name })
+                .ToListAsync();
+        }
+
+        private async Task<List<RouteStop>> GetRouteStopsAsync(int routeId)
+        {
+            return await _db.RouteStops.Where(rs => rs.BusRouteId == routeId)
+                .Include(rs => rs.Stop).OrderBy(rs => rs.SequenceOrder).AsNoTracking().ToListAsync();
         }
 
         private async Task<string> GenerateUniqueTicketReferenceAsync()

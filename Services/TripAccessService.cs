@@ -17,6 +17,7 @@ namespace Hopon.Api.Services
         {
             var ticket = await _db.Tickets
                                    .Include(t => t.Trip)
+                                   .Include(t => t.DestinationTripStop).ThenInclude(ts => ts!.Stop)
                                    .FirstOrDefaultAsync(t => t.UserId == userId && t.TripId == tripId);
 
             if(ticket is null || !ticket.IsActive)
@@ -25,8 +26,7 @@ namespace Hopon.Api.Services
                 
             }
 
-            var trackingActive = ticket.Trip.Status
-                    is TripStatus.Scheduled or TripStatus.InProgress or TripStatus.Delayed;
+            var trackingActive = TripStatusRules.IsTrackingActive(ticket.Trip.Status);
             return new TripAccessResult
             {
                 HasAccess = true,

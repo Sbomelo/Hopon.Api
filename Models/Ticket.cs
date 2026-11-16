@@ -13,6 +13,11 @@ public class Ticket
     public int TripId {get; set; }
     public Trip Trip { get; set; } = null!;
 
+    public int? OriginTripStopId { get; set; }
+    public TripStop? OriginTripStop { get; set; }
+    public int? DestinationTripStopId { get; set; }
+    public TripStop? DestinationTripStop { get; set; }
+
     public string? SeatNumber {get; set; } 
     public DateTime PurchaseDate { get; set; } = DateTime.UtcNow;
 

@@ -375,8 +375,14 @@ namespace Hopon.Api.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("DestinationTripStopId")
+                        .HasColumnType("int");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
+
+                    b.Property<int?>("OriginTripStopId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("PurchaseDate")
                         .HasColumnType("datetime2");
@@ -395,6 +401,10 @@ namespace Hopon.Api.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DestinationTripStopId");
+
+                    b.HasIndex("OriginTripStopId");
 
                     b.HasIndex("TicketReference")
                         .IsUnique();
@@ -632,6 +642,16 @@ namespace Hopon.Api.Migrations
 
             modelBuilder.Entity("Hopon.Api.Models.Ticket", b =>
                 {
+                    b.HasOne("Hopon.Api.Models.TripStop", "DestinationTripStop")
+                        .WithMany()
+                        .HasForeignKey("DestinationTripStopId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Hopon.Api.Models.TripStop", "OriginTripStop")
+                        .WithMany()
+                        .HasForeignKey("OriginTripStopId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Hopon.Api.Models.Trip", "Trip")
                         .WithMany("Tickets")
                         .HasForeignKey("TripId")
@@ -643,6 +663,10 @@ namespace Hopon.Api.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("DestinationTripStop");
+
+                    b.Navigation("OriginTripStop");
 
                     b.Navigation("Trip");
 

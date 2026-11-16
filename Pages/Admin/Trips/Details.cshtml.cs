@@ -22,6 +22,7 @@ namespace Hopon.Api.Pages.Admin.Trips
 
         public AdminTripDetailDto? Trip { get; set; }
         public List<SelectListItem> PassengerItems { get; set; } = new();
+        public List<SelectListItem> TripStopItems { get; set; } = new();
 
         [BindProperty]
         public IssueTicketInput Input { get; set; } = new();
@@ -34,6 +35,10 @@ namespace Hopon.Api.Pages.Admin.Trips
             [Required(ErrorMessage = "Select a passenger.")]
             public int? UserId { get; set; }
 
+            [Required(ErrorMessage = "Select a destination stop.")]
+            public int? DestinationTripStopId { get; set; }
+            public int? OriginTripStopId { get; set; }
+
             [StringLength(10, ErrorMessage = "Seat number can be at most 10 characters.")]
             [RegularExpression(@"^[A-Za-z0-9\-]*$", ErrorMessage = "Seat number can only contain letters, numbers and hyphens.")]
             public string? SeatNumber { get; set; }
@@ -41,9 +46,7 @@ namespace Hopon.Api.Pages.Admin.Trips
 
         public async Task<IActionResult> OnGetAsync(int id)
         {
-            Trip = await _tripService.GetTripDetailAsync(id);
-
-            if (Trip is null)
+            if (!await LoadAsync(id))
                 return NotFound();
 
             return Page();
@@ -62,7 +65,8 @@ namespace Hopon.Api.Pages.Admin.Trips
 
             try
             {
-                var (success, error, reference) = await _tripService.IssueTicketAsync(id, Input.UserId!.Value, Input.SeatNumber);
+                var (success, error, reference) = await _tripService.IssueTicketAsync(id, Input.UserId!.Value,
+                    Input.SeatNumber, Input.DestinationTripStopId!.Value, Input.OriginTripStopId);
 
                 if (!success)
                 {
@@ -96,6 +100,7 @@ namespace Hopon.Api.Pages.Admin.Trips
                 return false;
 
             PassengerItems = (await _tripService.GetAvailablePassengerOptionsAsync(id)).ToSelectListItems();
+            TripStopItems = (await _tripService.GetTripStopOptionsAsync(id)).ToSelectListItems();
             return true;
         }
     }

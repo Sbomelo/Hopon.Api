@@ -22,5 +22,7 @@ public class AdminTicketSummaryDto
     public string TicketReference { get; set; } = string.Empty;
     public string PassengerName { get; set; } = string.Empty;
     public string? SeatNumber { get; set; }
+    public string? DestinationStopName { get; set; }
+    public DateTime? DestinationScheduledArrival { get; set; }
     public bool IsActive { get; set; }
 }

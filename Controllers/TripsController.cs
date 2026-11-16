@@ -42,6 +42,8 @@ public class TripsController : ControllerBase
             TripId = result.Trip!.Id,
             TicketReference = result.Ticket!.TicketReference,
             SeatNumber = result.Ticket.SeatNumber,
+            DestinationStopName = result.Ticket.DestinationTripStop?.Stop.Name,
+            DestinationScheduledArrival = result.Ticket.DestinationTripStop?.ScheduledArrival,
             TripStatus = result.Trip.Status.ToString(),
             IsTrackingActive = result.IsTrackingActive,
             ScheduledDeparture = result.Trip.ScheduledDeparture,

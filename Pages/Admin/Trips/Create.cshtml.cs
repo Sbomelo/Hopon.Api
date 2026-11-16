@@ -69,6 +69,12 @@ namespace Hopon.Api.Pages.Admin.Trips
                 return RedirectToPage("./Details", new { id = tripId });
 
             }
+            catch (InvalidOperationException exception)
+            {
+                ModelState.AddModelError(string.Empty, exception.Message);
+                await LoadOptionsAsync();
+                return Page();
+            }
             catch (DbUpdateException)
             {
                 ModelState.AddModelError(string.Empty, "Could not create the trip. Please check your route, bus, and driver selections");
