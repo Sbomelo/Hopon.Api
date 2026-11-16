@@ -26,9 +26,9 @@ public class TokenSeparationTests
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<HoponDbContext>();
         var tokens = scope.ServiceProvider.GetRequiredService<IJwtTokenService>();
-        var passenger = new User { Id = 101, FullName = "Test passenger", PhoneNumber = "+27000000101" };
+        var passenger = new User { Id = 101, FullName = "Test passenger", PhoneNumber = "+27780000101" };
         db.Users.Add(passenger);
-        db.EmergencyContacts.Add(new EmergencyContact { UserId = 101, Name = "Test contact", PhoneNumber = "+27000000102" });
+        db.EmergencyContacts.Add(new EmergencyContact { UserId = 101, Name = "Test contact", PhoneNumber = "+27780000102" });
         await db.SaveChangesAsync();
 
         var login = await client.PostAsJsonAsync("/api/driver/auth/login", new { Username = "driver-one", Password = StaffApplication.Password });
@@ -44,7 +44,7 @@ public class TokenSeparationTests
             Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync(path)).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsync("/hubs/trip/negotiate?negotiateVersion=1", null)).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.DeleteAsync("/api/emergency-contact")).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.PutAsJsonAsync("/api/emergency-contact", new { Name = "Changed", PhoneNumber = "+27000000103" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.PutAsJsonAsync("/api/emergency-contact", new { Name = "Changed", PhoneNumber = "+27780000103" })).StatusCode);
 
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokens.GenerateToken(passenger).Token);
         foreach (var path in new[] { "/api/trips/my-trips", "/api/notifications/my", "/api/emergency-contact" })
@@ -59,7 +59,7 @@ public class TokenSeparationTests
         using var client = app.NewClient();
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<HoponDbContext>();
-        var passenger = new User { Id = 101, FullName = "Test passenger", PhoneNumber = "+27000000101" };
+        var passenger = new User { Id = 101, FullName = "Test passenger", PhoneNumber = "+27780000101" };
         db.Users.Add(passenger);
         db.Tickets.Add(new Ticket { UserId = 101, TripId = 101, TicketReference = "TEST-PASSENGER" });
         await db.SaveChangesAsync();

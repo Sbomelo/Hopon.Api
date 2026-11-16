@@ -1,6 +1,5 @@
 using Hopon.Api.Data;
 using Hopon.Api.Services;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
@@ -19,10 +18,8 @@ public class StaffSeederTests
     [InlineData("Development", true, 1)]
     public async Task Bootstrap_respects_configuration_environment_and_existing_admins(string environment, bool configured, int expected)
     {
-        using var connection = new SqliteConnection("Data Source=:memory:");
-        await connection.OpenAsync();
-        using var db = new HoponDbContext(new DbContextOptionsBuilder<HoponDbContext>().UseSqlite(connection).Options);
-        await db.Database.EnsureCreatedAsync();
+        await using var database = await TestDb.CreateAsync();
+        var db = database.Context;
         var config = new ConfigurationBuilder().AddInMemoryCollection(configured
             ? new Dictionary<string, string?> { ["Admin:Username"] = "configured-admin", ["Admin:Password"] = "Test-bootstrap-password" }
             : new Dictionary<string, string?>()).Build();

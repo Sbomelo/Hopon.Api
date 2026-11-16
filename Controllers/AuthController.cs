@@ -25,12 +25,12 @@ public class AuthController : ControllerBase
     [HttpPost("otp/request")]
     public async Task<IActionResult> RequestOtp([FromBody] RequestOtpDto dto)
     {
-        if(string.IsNullOrWhiteSpace(dto.PhoneNumber))
+        if (!PhoneNumberNormalizer.TryNormalizeSouthAfrican(dto.PhoneNumber, out var phoneNumber))
         {
-            return BadRequest("Phone number is required.");
+            return BadRequest("A valid South African mobile phone number is required.");
         }
                 
-        var (success, error, devOnlyCode) = await _otpService.RequestOtpAsync(dto.PhoneNumber);
+        var (success, error, devOnlyCode) = await _otpService.RequestOtpAsync(phoneNumber);
 
         if(!success)
             return BadRequest(error);
@@ -44,18 +44,21 @@ public class AuthController : ControllerBase
         
         if(string.IsNullOrWhiteSpace(dto.PhoneNumber) || string.IsNullOrWhiteSpace(dto.Code))
         {
-            return BadRequest("Phonw number and code are required");
+            return BadRequest("Phone number and code are required.");
         }
 
-        var (success, error) = await _otpService.VerifyOtpAsync(dto.PhoneNumber, dto.Code);
+        if (!PhoneNumberNormalizer.TryNormalizeSouthAfrican(dto.PhoneNumber, out var phoneNumber))
+            return BadRequest("A valid South African mobile phone number is required.");
+
+        var (success, error) = await _otpService.VerifyOtpAsync(phoneNumber, dto.Code);
 
         if(!success)
              return Unauthorized(error);
 
         //Get user and assign a jwt token
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.PhoneNumber == dto.PhoneNumber);
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.PhoneNumber == phoneNumber && u.IsActive);
         if(user is null)
-                return Unauthorized("User not found");
+                return Unauthorized("Unable to process this request.");
 
         var (token, expiresAt) = _jwtTokenService.GenerateToken(user);
 
