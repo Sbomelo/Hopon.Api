@@ -5,6 +5,7 @@
 @code = REPLACE_WITH_DEV_ONLY_CODE
 @token = REPLACE_WITH_PASSENGER_TOKEN
 @driverPassword = REPLACE_WITH_LOCAL_DRIVER_PASSWORD
+@driverToken = REPLACE_WITH_DRIVER_TOKEN
 
 ### Request OTP (Development returns devOnlyCode for an existing user)
 POST {{Hopon.Api_HostAddress}}/api/auth/otp/request
@@ -36,3 +37,28 @@ Content-Type: application/json
   "username": "driver1",
   "password": "{{driverPassword}}"
 }
+
+### Task 2: passenger token on driver API must return 403
+GET {{Hopon.Api_HostAddress}}/api/driver/my-trip
+Authorization: Bearer {{token}}
+
+### Task 2: driver token on passenger API must return 403 (even for overlapping IDs)
+GET {{Hopon.Api_HostAddress}}/api/trips/my-trips
+Authorization: Bearer {{driverToken}}
+
+### Task 2: driver token on driver API returns 200 when assigned an active trip
+GET {{Hopon.Api_HostAddress}}/api/driver/my-trip
+Authorization: Bearer {{driverToken}}
+
+### Task 2: driver cannot negotiate a hub connection or invoke JoinTrip (403)
+POST {{Hopon.Api_HostAddress}}/hubs/trip/negotiate?negotiateVersion=1
+Authorization: Bearer {{driverToken}}
+
+### Task 2: driver cannot bypass negotiation using a query token (403)
+GET {{Hopon.Api_HostAddress}}/hubs/trip?access_token={{driverToken}}
+
+### Task 2: passenger query token still authenticates the hub (200)
+POST {{Hopon.Api_HostAddress}}/hubs/trip/negotiate?negotiateVersion=1&access_token={{token}}
+
+### Task 2: query tokens do not authenticate API routes (401)
+GET {{Hopon.Api_HostAddress}}/api/trips/my-trips?access_token={{token}}

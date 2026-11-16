@@ -8,7 +8,7 @@ namespace Hopon.Api.Controllers
 {
     [Route("api/notifications")]
     [ApiController]
-    [Authorize]
+    [Authorize(Roles = "Passenger")]
     public class NotificationsController : ControllerBase
     {
         private readonly INotificationService _notificationService;

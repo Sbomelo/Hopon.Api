@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace Hopon.Api.Hubs;
 
-[Authorize]
+[Authorize(Roles = "Passenger")]
 public class TripHub : Hub
 {
     private readonly ITripAccessService _accessService;

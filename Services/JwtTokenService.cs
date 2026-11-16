@@ -30,6 +30,7 @@ public class JwtTokenService : IJwtTokenService
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.Role, "Passenger"),
             new("phoneNumber", user.PhoneNumber),
             new(ClaimTypes.Name, user.FullName)
         };
@@ -62,7 +63,7 @@ public class JwtTokenService : IJwtTokenService
             new(ClaimTypes.NameIdentifier, driver.Id.ToString()),
             new(ClaimTypes.Name, driver.FullName),
             new(ClaimTypes.Role, "Driver"),
-            new("userName", driver.PhoneNumber)
+            new("username", driver.Username)
         };
 
         //Create Token
