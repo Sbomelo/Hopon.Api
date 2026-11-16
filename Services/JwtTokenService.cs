@@ -2,29 +2,28 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Hopon.Api.Models;
-//using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Hopon.Api.Services;
 
 public class JwtTokenService : IJwtTokenService
 {
-    private readonly IConfiguration _config;
+    private readonly JwtOptions _options;
 
-    public JwtTokenService(IConfiguration config)
+    public JwtTokenService(IOptions<JwtOptions> options)
     {
-        _config = config;
+        _options = options.Value;
     }
 
     public (string Token, DateTime ExpiresAt) GenerateToken(User user)
     {
         //Build the signing Key
-        var jwtSection = _config.GetSection("Jwt");
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSection["Key"]!));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.Key));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         //Set expiry
-        var expiresAt = DateTime.UtcNow.AddHours(double.Parse(jwtSection["ExpiryHours"]!));
+        var expiresAt = DateTime.UtcNow.AddHours(_options.ExpiryHours);
 
         //Build Claims
         var claims = new List<Claim>
@@ -37,8 +36,8 @@ public class JwtTokenService : IJwtTokenService
 
         //Create Token
         var token = new JwtSecurityToken(
-            issuer: jwtSection["Issuer"],
-            audience: jwtSection["Audience"],
+            issuer: _options.Issuer,
+            audience: _options.Audience,
             claims: claims,
             expires: expiresAt,
             signingCredentials: credentials
@@ -50,12 +49,11 @@ public class JwtTokenService : IJwtTokenService
     public (string Token, DateTime ExpiresAt) GenerateToken(Driver driver)
     {
         //Build the signing Key
-        var jwtSection = _config.GetSection("Jwt");
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSection["Key"]!));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.Key));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         //Set expiry
-        var expiresAt = DateTime.UtcNow.AddHours(double.Parse(jwtSection["ExpiryHours"]!));
+        var expiresAt = DateTime.UtcNow.AddHours(_options.ExpiryHours);
 
         //Build Claims
         var claims = new List<Claim>
@@ -68,8 +66,8 @@ public class JwtTokenService : IJwtTokenService
 
         //Create Token
         var token = new JwtSecurityToken(
-            issuer: jwtSection["Issuer"],
-            audience: jwtSection["Audience"],
+            issuer: _options.Issuer,
+            audience: _options.Audience,
             claims: claims,
             expires: expiresAt,
             signingCredentials: credentials
