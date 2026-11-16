@@ -8,13 +8,21 @@ Companion to `AGENTS.md` (read that first). This file is the **source of truth f
 
 Task 0 audit: **2026-11-16**, covering both repositories (`backend` = Hopon.Api; `frontend` = hopon-passenger). This handoff is copied into both repositories because the workspace-level `docs` directory is outside Git. API implementation is distinguished from usable UI below.
 
+**Task 2 — Token separation (2026-11-16)**
+- [x] Passenger JWTs carry the Passenger role; passenger controllers and TripHub require it. Driver JWTs retain Driver and now carry the correct username claim.
+- [x] Explicit signing-key validation, one-minute clock skew and role claim mapping; query tokens remain restricted to `/hubs`.
+- [x] Passenger UI returns to OTP login after authenticated API 401/403 responses, using the existing logout handler. Anonymous OTP errors remain visible.
+- [x] Three-identity documentation and deployment notice in `docs/SECURITY.md`; request examples in backend `Hopon.Api.http`. Passengers must log in again because old tokens have no role. No migration added.
+- [x] Verification: `dotnet build` (zero errors), 24 backend tests, frontend auth-failure test, lint and build passed. Coverage includes overlapping IDs, role-less tokens, signature/expiry validation and OTP → map-data → SignalR JoinTrip. Browser checks confirm authenticated 401/403 clears storage and returns to login.
+- Local SQL Server OTP login, passenger trips, passenger-to-driver rejection (403) and hub negotiation (200) passed. Active-trip map-data access and SignalR joining passed with isolated test data; full local live-map rendering remains unverified because the existing passenger has zero live trips and one past trip. No demo records were changed. Broader testing remains Task 13.
+- Task 3 remains untouched.
+
 **Task 1 — Staff authentication (2026-11-16)**
 - [x] Separate StaffCookie authentication and AdminOnly/DriverOnly Razor policies; existing API JWT behavior remains unchanged. Login, POST logout, access denied and role-aware headers are implemented.
 - [x] AdminUsers table and AddAdminUsers migration; configuration-based first-admin bootstrap, generated Development fallback, warning/skip outside Development when credentials are missing.
 - [x] Admin driver list, creation, deactivate/reactivate and password reset. Deactivated accounts lose cookie access on their next request. Password reset affects future logins, without revoking existing cookies/JWTs.
 - [x] Driver page uses the authenticated driver id; service stop mutations require the authorized trip id.
 - [x] Focused SQLite/WebApplicationFactory staff security and bootstrap tests. Run `dotnet test`; setup and manual acceptance checks are in `docs/STAFF_AUTH.md`.
-- Task 2 and Task 3 remain untouched.
 
 **Task 0 verification**
 - [x] `dotnet build`: succeeds, zero errors. Existing CS8604 nullable warning in `Controllers/DriverController.cs:68` remains; no backend compile fix was needed.
@@ -75,7 +83,7 @@ No current committed JWT signing key, password-bearing connection string or Twil
 Fix these as part of the tasks below (each is referenced there).
 
 1. Resolved in Task 1: Admin/Driver Razor folders require the respective staff cookie role; the driver id comes from the authenticated claim.
-2. **Driver and passenger JWTs share the same `NameIdentifier` claim, and passenger endpoints only use `[Authorize]`.** A driver token with id 2 is treated as passenger 2. Passenger tokens carry no role.
+2. Resolved in Task 2: passenger endpoints and TripHub require the Passenger role; driver APIs require Driver, preventing overlapping IDs from crossing identities.
 3. **`OtpService` logs the plain OTP at Information level in every environment**, and uses `Random.Shared` (not cryptographically secure). Previous unused OTPs are not invalidated when a new one is requested.
 4. **No phone-number normalisation** (`078…` vs `+2778…` vs spaces will all fail to match the unique `Users.PhoneNumber`).
 5. **`Ticket` has no passenger stop.** The notification rules ("X before *your* stop", "notify emergency contact when you arrive") are impossible without it. See Task 4.
@@ -114,7 +122,7 @@ Each task = one branch + one PR. Acceptance criteria are what "done" means.
 - Admin can create/deactivate driver accounts (username + initial password).
 - *Done when:* unauthenticated requests to `/Admin/*` and `/Driver/*` redirect to login; driver A cannot act on driver B's trip.
 
-**Task 2: Token separation**
+**Task 2: Token separation — complete**
 - Add a `Passenger` role claim to passenger JWTs; use `[Authorize(Roles="Passenger")]` on passenger controllers and the hub. Driver JWTs must not work on passenger endpoints and vice versa. Use different claim names or a `typ`/role check so ids can't collide.
 - *Done when:* a driver JWT gets 403 on `/api/trips/my-trips` and `/hubs/trip`; a passenger JWT gets 403 on `/api/driver/*`.
 

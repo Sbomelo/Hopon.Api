@@ -13,7 +13,7 @@ namespace Hopon.Api.Controllers;
 
 [ApiController]
 [Route("api/trips")]
-[Authorize]
+[Authorize(Roles = "Passenger")]
 public class TripsController : ControllerBase
 {
     private readonly ITripDashboardService _tripDashboardService;

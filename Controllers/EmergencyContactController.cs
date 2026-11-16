@@ -8,7 +8,7 @@ namespace Hopon.Api.Controllers
 {
     [Route("api/emergency-contact")]
     [ApiController]
-    [Authorize]
+    [Authorize(Roles = "Passenger")]
     public class EmergencyContactController : ControllerBase
     {
         private readonly IEmergencyContactService _service;
