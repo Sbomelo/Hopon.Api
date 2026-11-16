@@ -62,7 +62,7 @@ namespace Hopon.Api.Pages.Admin.Trips
         {
             if(Input.ScheduledArrival <= Input.ScheduledDeparture)
             {
-                ModelState.AddModelError(nameof(Input.ScheduledArrival), "Arrival must be afetr  departure");
+                ModelState.AddModelError("Input.ScheduledArrival", "Arrival must be after departure.");
             }
 
             if (!ModelState.IsValid)
@@ -80,6 +80,12 @@ namespace Hopon.Api.Pages.Admin.Trips
                     return NotFound();
 
                 return RedirectToPage("./Details", new { id = Id });
+            }
+            catch (InvalidOperationException exception)
+            {
+                ModelState.AddModelError(string.Empty, exception.Message);
+                await LoadOptionsAsync();
+                return Page();
             }
             catch (DbUpdateException)
             {

@@ -5,6 +5,8 @@
         public int TripId { get; set; }
         public string TicketReference { get; set; } = string.Empty;
         public string? SeatNumber { get; set; }
+        public string? DestinationStopName { get; set; }
+        public DateTime? DestinationScheduledArrival { get; set; }
         public string RouteName { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
 

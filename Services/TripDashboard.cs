@@ -20,6 +20,7 @@ namespace Hopon.Api.Services
         {
             var tickets = await _context.Tickets
                                         .Where(t => t.UserId == userId && t.IsActive)
+                                        .Include(t => t.DestinationTripStop).ThenInclude(ts => ts!.Stop)
                                         .Include(t => t.Trip)
                                             .ThenInclude(trip => trip.BusRoute)
                                         .AsNoTracking()
@@ -37,6 +38,10 @@ namespace Hopon.Api.Services
                 {
                     TripId = trip.Id,
                     TicketReference = ticket.TicketReference,
+                    DestinationStopName = ticket.DestinationTripStop?.Stop.Name,
+                    DestinationScheduledArrival = ticket.DestinationTripStop?.ScheduledArrival,
+                    DestinationEstimatedArrival = ticket.DestinationTripStop is null ? null
+                        : EtaCalculator.CalculateStopEta(trip, ticket.DestinationTripStop).EstimatedArrival,
                     RouteName = trip.BusRoute.Name,
                     TripDate = trip.ScheduledDeparture.Date,
                     ScheduledDeparture = trip.ScheduledDeparture,

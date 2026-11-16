@@ -135,6 +135,18 @@ public class HoponDbContext : DbContext
 
         //A User can only hold one ticket per trip
         modelBuilder.Entity<Ticket>()
+                .HasOne(tk => tk.OriginTripStop)
+                .WithMany()
+                .HasForeignKey(tk => tk.OriginTripStopId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Ticket>()
+                .HasOne(tk => tk.DestinationTripStop)
+                .WithMany()
+                .HasForeignKey(tk => tk.DestinationTripStopId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Ticket>()
                 .HasIndex(tk => new {tk.UserId, tk.TripId})
                 .IsUnique();
 

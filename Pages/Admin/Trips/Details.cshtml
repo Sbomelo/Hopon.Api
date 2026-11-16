@@ -35,7 +35,7 @@ else
 
     <h2 style="margin-top:2rem;">Tickets (@trip.Tickets.Count)</h2>
     <table class="hopon-table">
-        <thead><tr><th>Reference</th><th>Passenger</th><th>Seat</th><th>Active</th></tr></thead>
+        <thead><tr><th>Reference</th><th>Passenger</th><th>Seat</th><th>Destination stop</th><th>Scheduled arrival</th><th>Active</th></tr></thead>
         <tbody>
             @foreach (var ticket in trip.Tickets)
             {
@@ -43,12 +43,14 @@ else
                     <td>@ticket.TicketReference</td>
                     <td>@ticket.PassengerName</td>
                     <td>@(ticket.SeatNumber ?? "—")</td>
+                    <td>@(ticket.DestinationStopName ?? "—")</td>
+                    <td>@(ticket.DestinationScheduledArrival?.ToString("dd MMM yyyy, HH:mm") ?? "—")</td>
                     <td>@(ticket.IsActive ? "Yes" : "No")</td>
                 </tr>
             }
             @if (!trip.Tickets.Any())
             {
-                <tr><td colspan="4">No tickets booked yet.</td></tr>
+                <tr><td colspan="6">No tickets booked yet.</td></tr>
             }
         </tbody>
     </table>
@@ -57,7 +59,11 @@ else
     {
         <h2 style="margin-top:2rem;">Issue Ticket</h2>
 
-        @if (Model.PassengerItems.Count == 0)
+        @if (Model.TripStopItems.Count < 2)
+        {
+            <p>This trip needs at least two stops before tickets can be issued.</p>
+        }
+        else if (Model.PassengerItems.Count == 0)
         {
             <p>Every active passenger already holds a ticket for this trip.</p>
         }
@@ -71,7 +77,17 @@ else
                     <option value="">Select a passenger</option>
                 </select>
 
-                <label>Seat number (optional)</label>
+                <label asp-for="Input.OriginTripStopId">Boarding stop (optional)</label>
+                <select asp-for="Input.OriginTripStopId" asp-items="Model.TripStopItems">
+                    <option value="">First stop (default)</option>
+                </select>
+
+                <label asp-for="Input.DestinationTripStopId">Destination stop</label>
+                <select asp-for="Input.DestinationTripStopId" asp-items="Model.TripStopItems">
+                    <option value="">Select a destination stop</option>
+                </select>
+
+                <label asp-for="Input.SeatNumber">Seat number (optional)</label>
                 <input asp-for="Input.SeatNumber" maxlength="10" placeholder="e.g. 14A" />
 
                 <button type="submit" class="btn-primary" style="margin-top:1rem;">Issue Ticket</button>

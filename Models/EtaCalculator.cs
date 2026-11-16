@@ -4,6 +4,19 @@ namespace Hopon.Api.Models
 {
     public static class EtaCalculator
     {
+        public static (DateTime? EstimatedArrival, bool IsEstimate) CalculateStopEta(Trip trip, TripStop stop)
+        {
+            if (stop.Status is TripStopStatus.Arrived or TripStopStatus.Departed)
+                return (stop.ActualArrival, false);
+            if (trip.Status is TripStatus.Cancelled or TripStatus.Completed)
+                return (null, false);
+
+            var departureDelay = trip.ActualDeparture.HasValue
+                ? trip.ActualDeparture.Value - trip.ScheduledDeparture
+                : TimeSpan.Zero;
+            return (stop.ScheduledArrival + departureDelay, true);
+        }
+
         public static (DateTime? EstimatedArrival, bool IsEstimate) CalculateEta (Trip trip)
         {
             switch (trip.Status)

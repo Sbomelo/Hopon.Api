@@ -13,6 +13,9 @@ namespace Hopon.Api.DTOs.Trips
         public DateTime? ActualDepature { get; set; }
         public DateTime? ActualArrival { get; set; }
         public DateTime? EstimatedArrival { get; set; }
+        public string? DestinationStopName { get; set; }
+        public DateTime? DestinationScheduledArrival { get; set; }
+        public DateTime? DestinationEstimatedArrival { get; set; }
         public bool IsEstimate { get; set; }
         public string Status { get; set; } = null!;
         public bool IsLive { get; set; }

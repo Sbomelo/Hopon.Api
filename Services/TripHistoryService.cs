@@ -18,6 +18,7 @@ namespace Hopon.Api.Services
         public async Task<TripHistoryDto?> GetTripHistoryAsync(int userId, int tripId)
         {
             var ticket = await _db.Tickets
+                       .Include(t => t.DestinationTripStop).ThenInclude(ts => ts!.Stop)
                        .AsNoTracking()
                        .FirstOrDefaultAsync(tk => tk.UserId == userId && tk.TripId == tripId);
 
@@ -54,6 +55,8 @@ namespace Hopon.Api.Services
                 TripId = trip.Id,
                 TicketReference = ticket.TicketReference,
                 SeatNumber = ticket.SeatNumber,
+                DestinationStopName = ticket.DestinationTripStop?.Stop.Name,
+                DestinationScheduledArrival = ticket.DestinationTripStop?.ScheduledArrival,
                 RouteName = trip.BusRoute.Name,
                 Status = trip.Status.ToString(),
                 ScheduledDeparture = trip.ScheduledDeparture,
