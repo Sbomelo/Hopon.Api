@@ -3,6 +3,7 @@ using Hopon.Api.DTOs.EmergencyContact;
 using Hopon.Api.Models;
 using Hopon.Api.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 
 namespace Hopon.Api.Services
 {
@@ -27,6 +28,9 @@ namespace Hopon.Api.Services
 
         public async Task<EmergencyContactDto> UpsertAsync(int userId, UpsertEmergencyContactDto dto)
         {
+            if (!PhoneNumberNormalizer.TryNormalizeSouthAfrican(dto.PhoneNumber, out var phoneNumber))
+                throw new ValidationException("A valid South African mobile phone number is required.");
+
             var existing = await _db.EmergencyContacts
                 .FirstOrDefaultAsync(ec => ec.UserId == userId);
 
@@ -36,7 +40,7 @@ namespace Hopon.Api.Services
                 {
                     UserId = userId,
                     Name = dto.Name.Trim(),
-                    PhoneNumber = dto.PhoneNumber.Trim(),
+                    PhoneNumber = phoneNumber,
                     CreatedAt = DateTime.UtcNow
                 };
 
@@ -47,7 +51,7 @@ namespace Hopon.Api.Services
             }
 
             existing.Name = dto.Name.Trim();
-            existing.PhoneNumber = dto.PhoneNumber.Trim();
+            existing.PhoneNumber = phoneNumber;
             existing.UpdatedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();

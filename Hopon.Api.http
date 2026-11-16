@@ -7,7 +7,7 @@
 @driverPassword = REPLACE_WITH_LOCAL_DRIVER_PASSWORD
 @driverToken = REPLACE_WITH_DRIVER_TOKEN
 
-### Request OTP (Development returns devOnlyCode for an existing user)
+### Request OTP (Otp:ExposeCodeInResponse controls devOnlyCode; enabled by default in Development)
 POST {{Hopon.Api_HostAddress}}/api/auth/otp/request
 Content-Type: application/json
 
