@@ -76,6 +76,79 @@ namespace Hopon.Api.Services
                 await CreateAsync(userId, stop.TripId, NotificationType.Arrival,
                     NotificationMessages.Arrival(stop.Stop.Name), [NotificationChannel.InApp, NotificationChannel.Sms]);
             }
+
+            await NotifyEmergencyContactsAsync(stop);
+        }
+
+        public async Task NotifyTripCompletedAsync(Trip trip)
+        {
+            if (trip.Status != TripStatus.Completed)
+                return;
+
+            var lastStop = await _db.TripStops.AsNoTracking().Include(s => s.Stop)
+                .Where(s => s.TripId == trip.Id).OrderByDescending(s => s.SequenceOrder).FirstOrDefaultAsync();
+            if (lastStop != null)
+                await NotifyEmergencyContactsAsync(lastStop);
+        }
+
+        private async Task NotifyEmergencyContactsAsync(TripStop stop)
+        {
+            var recipients = await _db.Tickets.AsNoTracking()
+                .Where(t => t.IsActive && t.TripId == stop.TripId && t.DestinationTripStopId == stop.Id
+                    && t.User.EmergencyContact != null)
+                .Select(t => new { t.UserId, t.User.FullName,
+                    ContactName = t.User.EmergencyContact!.Name, ContactNumber = t.User.EmergencyContact.PhoneNumber })
+                .ToListAsync();
+            var existing = await _db.NotificationLogs.AsNoTracking()
+                .Where(n => n.TripId == stop.TripId && n.Type == NotificationType.Emergency)
+                .Select(n => n.UserId).ToListAsync();
+
+            foreach (var recipient in recipients)
+            {
+                if (existing.Contains(recipient.UserId))
+                    continue;
+
+                var enabled = _options.SendsSms(NotificationType.Emergency);
+                var log = new NotificationLog
+                {
+                    UserId = recipient.UserId, TripId = stop.TripId,
+                    Type = NotificationType.Emergency, Channel = NotificationChannel.Sms,
+                    Status = NotificationStatus.Pending, CreatedAt = _timeProvider.GetUtcNow().UtcDateTime,
+                    Message = enabled ? $"Arrival SMS pending for {recipient.ContactName}."
+                        : $"SMS disabled: we have not told {recipient.ContactName} you arrived."
+                };
+                // Save before external I/O: repeat arrivals and completion share this claim.
+                if (!await _writer.TryWriteAsync(log) || !enabled)
+                    continue;
+
+                var firstName = recipient.FullName.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "Passenger";
+                SmsSendResult result;
+                try
+                {
+                    result = await _smsSender.SendAsync(recipient.ContactNumber,
+                        $"Hopon: {firstName} has arrived safely at {stop.Stop.Name}.");
+                }
+                catch (Exception)
+                {
+                    // Never persist provider exception text: it may contain the contact's number.
+                    result = new SmsSendResult(false, null, null);
+                }
+
+                if (result.Success && !result.IsSimulated)
+                {
+                    log.Status = NotificationStatus.Sent;
+                    log.SentAt = _timeProvider.GetUtcNow().UtcDateTime;
+                    log.Message = $"We told {recipient.ContactName} you arrived.";
+                }
+                else
+                {
+                    log.Status = result.Success ? NotificationStatus.Pending : NotificationStatus.Failed;
+                    log.Message = result.Success
+                        ? $"SMS simulated: we have not told {recipient.ContactName} you arrived."
+                        : $"We could not tell {recipient.ContactName} you arrived. SMS failed.";
+                }
+                await _db.SaveChangesAsync();
+            }
         }
 
         public async Task NotifyTripDelayedAsync(Trip trip, string reason)

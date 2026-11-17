@@ -155,7 +155,9 @@ public class SmsTests
     {
         var logger = new CapturingLogger<LoggingSmsSender>();
         var sender = new LoggingSmsSender(new TestEnvironment { EnvironmentName = environment }, logger);
-        Assert.True((await sender.SendAsync("+27820000000", "Your Hopon code is 123456. It expires in 10 minutes.")).Success);
+        var result = await sender.SendAsync("+27820000000", "Your Hopon code is 123456. It expires in 10 minutes.");
+        Assert.True(result.Success);
+        Assert.True(result.IsSimulated);
         var log = Assert.Single(logger.Messages);
         Assert.StartsWith("SMS to +27820000000 : ", log);
         Assert.Equal(exposes, log.Contains("123456"));

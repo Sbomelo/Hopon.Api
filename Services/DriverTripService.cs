@@ -81,6 +81,8 @@ namespace Hopon.Api.Services
 
             await _db.SaveChangesAsync();
 
+            await _notificationService.NotifyTripCompletedAsync(trip);
+
             await BroadcastStatusAsync(trip, reason: null);
 
             return (true, null);
