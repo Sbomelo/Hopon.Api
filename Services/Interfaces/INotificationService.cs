@@ -6,6 +6,7 @@ namespace Hopon.Api.Services.Interfaces
     public interface INotificationService
     {
         Task NotifyTripDelayedAsync(Trip trip, string reason);
+        Task NotifyStopArrivedAsync(TripStop stop);
         Task<List<NotificationDto>> GetNotificationsForUserAsync(int userId);
     }
 }
