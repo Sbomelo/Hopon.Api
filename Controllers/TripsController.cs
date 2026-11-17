@@ -98,7 +98,6 @@ public class TripsController : ControllerBase
     }
 
     [HttpGet("{tripId}/history")]
-    [RequireTripAccess]
     public async Task<IActionResult> GetTripHistory(int tripId)
     {
         var userIdClaims = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -118,7 +117,8 @@ public class TripsController : ControllerBase
     [RequireTripAccess]
     public async Task<IActionResult> GetMapData(int tripId)
     {
-        var mapData = await _tripMapService.GetMapDataAsync(tripId);
+        var access = (TripAccessResult)HttpContext.Items["TripAccessResult"]!;
+        var mapData = await _tripMapService.GetMapDataAsync(tripId, access.Ticket!.DestinationTripStopId);
 
         if (mapData is null)
             return NotFound(new { 

@@ -7,6 +7,8 @@ namespace Hopon.Api.DTOs.Trips
         public int TripId { get; set; }
         public string RouteName { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
+        public string? DestinationStopName { get; set; }
+        public DateTime? DestinationEstimatedArrival { get; set; }
         public List<MapStopDto> Stops { get; set; } = new();
         public MapLocationDto? LastKnownLocation { get; set; }
     }
