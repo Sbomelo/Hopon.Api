@@ -5,6 +5,8 @@ using Hopon.Api.Models.Enums;
 using Hopon.Api.Services.Interfaces;
 using Hopon.Api.Services.Notifications;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Hopon.Api.Services.Sms;
 
 namespace Hopon.Api.Services
 {
@@ -13,12 +15,45 @@ namespace Hopon.Api.Services
         private readonly HoponDbContext _db;
         private readonly PassengerNotificationWriter _writer;
         private readonly TimeProvider _timeProvider;
+        private readonly ISmsSender _smsSender;
+        private readonly NotificationOptions _options;
 
-        public NotificationService(HoponDbContext db, PassengerNotificationWriter writer, TimeProvider timeProvider)
+        public NotificationService(HoponDbContext db, PassengerNotificationWriter writer, TimeProvider timeProvider,
+            ISmsSender smsSender, IOptions<NotificationOptions> options)
         {
             _db = db;
             _writer = writer;
             _timeProvider = timeProvider;
+            _smsSender = smsSender;
+            _options = options.Value;
+        }
+
+        public async Task CreateAsync(int userId, int? tripId, NotificationType type, string message, NotificationChannel[] channels)
+        {
+            foreach (var channel in channels.Distinct())
+            {
+                if (channel == NotificationChannel.Sms && !_options.SendsSms(type))
+                    continue;
+
+                var now = _timeProvider.GetUtcNow().UtcDateTime;
+                var log = new NotificationLog
+                {
+                    UserId = userId, TripId = tripId, Type = type, Channel = channel, Message = message,
+                    CreatedAt = now, Status = channel == NotificationChannel.InApp ? NotificationStatus.Sent : NotificationStatus.Pending,
+                    SentAt = channel == NotificationChannel.InApp ? now : null
+                };
+                // Claim the channel before sending so concurrent ticks cannot both send SMS.
+                if (!await _writer.TryWriteAsync(log))
+                    return;
+                if (channel != NotificationChannel.Sms)
+                    continue;
+
+                var phone = await _db.Users.Where(u => u.Id == userId).Select(u => u.PhoneNumber).SingleAsync();
+                var result = await _smsSender.SendAsync(phone, message);
+                log.Status = result.Success ? NotificationStatus.Sent : NotificationStatus.Failed;
+                log.SentAt = result.Success ? _timeProvider.GetUtcNow().UtcDateTime : null;
+                await _db.SaveChangesAsync();
+            }
         }
 
         public async Task NotifyStopArrivedAsync(TripStop stop)
@@ -33,18 +68,13 @@ namespace Hopon.Api.Services
                 .Where(n => n.TripId == stop.TripId && n.Type == NotificationType.Arrival && userIds.Contains(n.UserId))
                 .Select(n => n.UserId).ToListAsync();
             var alreadySent = existing.ToHashSet();
-            var now = _timeProvider.GetUtcNow().UtcDateTime;
             foreach (var userId in userIds)
             {
                 if (alreadySent.Contains(userId))
                     continue;
 
-                await _writer.TryWriteAsync(new NotificationLog
-                {
-                    UserId = userId, TripId = stop.TripId, Type = NotificationType.Arrival,
-                    Channel = NotificationChannel.InApp, Status = NotificationStatus.Sent,
-                    Message = NotificationMessages.Arrival(stop.Stop.Name), CreatedAt = now, SentAt = now
-                });
+                await CreateAsync(userId, stop.TripId, NotificationType.Arrival,
+                    NotificationMessages.Arrival(stop.Stop.Name), [NotificationChannel.InApp, NotificationChannel.Sms]);
             }
         }
 
@@ -59,26 +89,13 @@ namespace Hopon.Api.Services
             if (userIds.Count == 0)
                 return;
 
-            var now = DateTime.UtcNow;
-
             var message = string.IsNullOrWhiteSpace(reason)
                                  ? "Your bus has been delayed."
                                  : $"Your bus has been delayed: {reason}";
 
-            var logs = userIds.Select(userId => new NotificationLog
-            {
-                UserId = userId,
-                TripId = trip.Id,
-                Type = NotificationType.Delay,
-                Channel = NotificationChannel.InApp,
-                Message = message,
-                Status = NotificationStatus.Sent,
-                CreatedAt = now,
-                SentAt = now
-            }).ToList();
-
-            _db.NotificationLogs.AddRange(logs);
-            await _db.SaveChangesAsync();
+            foreach (var userId in userIds)
+                await CreateAsync(userId, trip.Id, NotificationType.Delay, message,
+                    [NotificationChannel.InApp, NotificationChannel.Sms]);
         }
 
         public async Task<List<NotificationDto>> GetNotificationsForUserAsync(int userId)

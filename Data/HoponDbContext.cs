@@ -203,7 +203,7 @@ public class HoponDbContext : DbContext
 
         // Only reminders/arrival are once per trip. Delay notifications can repeat.
         modelBuilder.Entity<NotificationLog>()
-                .HasIndex(nl => new { nl.UserId, nl.TripId, nl.Type })
+                .HasIndex(nl => new { nl.UserId, nl.TripId, nl.Type, nl.Channel })
                 .IsUnique()
                 .HasFilter("[TripId] IS NOT NULL AND [Type] IN (0, 1, 2, 3, 4)");
 

@@ -23,6 +23,30 @@ namespace Hopon.Api.Tests;
 public class NotificationSchedulerTests
 {
     [Fact]
+    public async Task Scheduler_arrival_and_delay_share_sms_policy_and_do_not_repeat_reminder_or_arrival_sms()
+    {
+        await using var fixture = await SchedulerFixture.CreateAsync(smsEnabled: true);
+        var sender = (FakeSmsSender)fixture.Services.GetRequiredService<Hopon.Api.Services.Sms.ISmsSender>();
+        fixture.Clock.Advance(TimeSpan.FromMinutes(270));
+        await fixture.Scheduler.RunOnceAsync();
+        await fixture.Scheduler.RunOnceAsync();
+        Assert.Contains("Harrismith", Assert.Single(sender.Messages).Message);
+        var logs = await fixture.Logs();
+        Assert.Equal(2, logs.Count(n => n.Type == NotificationType.ThirtyMinutesBefore));
+        Assert.Equal(NotificationChannel.InApp, Assert.Single(logs, n => n.Type == NotificationType.TwoHoursBefore).Channel);
+
+        using var scope = fixture.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<HoponDbContext>();
+        var driver = scope.ServiceProvider.GetRequiredService<IDriverTripService>();
+        var trip = (await db.Trips.FindAsync(fixture.TripId))!;
+        Assert.True((await driver.MarkStopArrivedAsync(trip, fixture.FirstStopId)).Success);
+        Assert.False((await driver.MarkStopArrivedAsync(trip, fixture.FirstStopId)).Success);
+        Assert.Equal(2, (await fixture.Logs()).Count(n => n.Type == NotificationType.Arrival && n.Channel == NotificationChannel.Sms));
+        Assert.True((await driver.ReportDelayedAsync(trip, "Traffic")).Success);
+        Assert.Contains(sender.Messages, m => m.Message.Contains("Traffic"));
+    }
+
+    [Fact]
     public async Task Scheduled_notification_is_visible_only_in_its_passengers_api_feed()
     {
         using var baseApp = new StaffApplication();
@@ -141,7 +165,7 @@ public class NotificationSchedulerTests
         {
             Assert.Equal(NotificationType.ThirtyMinutesBefore, logs.Single(n => n.UserId == 1).Type);
             Assert.Equal(NotificationType.TwoHoursBefore, logs.Single(n => n.UserId == 2).Type);
-            Assert.All(logs, n => Assert.Equal(SchedulerFixture.Start.AddMinutes(offset).UtcDateTime, n.SentAt));
+            Assert.All(logs, n => Assert.Equal(SchedulerFixture.Start.UtcDateTime, n.SentAt));
             await fixture.Scheduler.RunOnceAsync();
             Assert.Equal(2, (await fixture.Logs()).Count);
         }
@@ -228,7 +252,7 @@ public class NotificationSchedulerTests
         public int FirstStopId { get; private set; }
         public int SecondStopId { get; private set; }
 
-        private SchedulerFixture(SqliteConnection connection, string environment, int offset)
+        private SchedulerFixture(SqliteConnection connection, string environment, int offset, bool smsEnabled)
         {
             _connection = connection;
             var services = new ServiceCollection();
@@ -240,17 +264,19 @@ public class NotificationSchedulerTests
             services.AddSingleton<IHostEnvironment>(new TestEnvironment { EnvironmentName = environment });
             services.AddDbContext<HoponDbContext>(options => options.UseSqlite(connection).AddInterceptors(Interceptor));
             services.AddScoped<PassengerNotificationWriter>();
+            services.AddSingleton<Hopon.Api.Services.Sms.ISmsSender>(new FakeSmsSender());
+            services.AddOptions<NotificationOptions>().Configure(o => o.SmsEnabled = smsEnabled);
             services.AddScoped<INotificationService, NotificationService>();
             services.AddScoped<IDriverTripService, DriverTripService>();
             services.AddSingleton<NotificationSchedulerService>();
             Services = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
         }
 
-        public static async Task<SchedulerFixture> CreateAsync(string environment = "Development", int offset = 0)
+        public static async Task<SchedulerFixture> CreateAsync(string environment = "Development", int offset = 0, bool smsEnabled = false)
         {
             var connection = new SqliteConnection("Data Source=:memory:");
             await connection.OpenAsync();
-            var fixture = new SchedulerFixture(connection, environment, offset);
+            var fixture = new SchedulerFixture(connection, environment, offset, smsEnabled);
             using var scope = fixture.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<HoponDbContext>();
             await db.Database.EnsureCreatedAsync();

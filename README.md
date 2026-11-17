@@ -18,13 +18,13 @@ dotnet run --launch-profile http
 
 Choose your own admin credentials before running the commands. Admin settings bootstrap the first account only; changing them does not reset an existing account. Development can generate a fallback admin if credentials are absent; configure them explicitly for predictable logins. User-secrets stays outside Git and is loaded only in Development. Never place real secrets in committed appsettings files or frontend `VITE_*` settings.
 
-Required local keys: `Jwt:Key` (at least 32 characters) and `ConnectionStrings:HoponDb`. Configure `Admin:Username` and `Admin:Password` to bootstrap an admin. Future Task 6 keys are `Twilio:AccountSid`, `Twilio:AuthToken`, and `Twilio:FromNumber`; they are not consumed yet. Non-secret JWT issuer/audience and an eight-hour lifetime remain in appsettings.json. Startup validates JWT, CORS and OTP options before staff database bootstrap. JWT expiry must be between 0.01 and 8760 hours.
+Required local keys: `Jwt:Key` (at least 32 characters) and `ConnectionStrings:HoponDb`. Configure `Admin:Username` and `Admin:Password` to bootstrap an admin. SMS defaults to Logging. Set `Sms:Provider=Twilio` with `Twilio:AccountSid`, `Twilio:AuthToken`, and either `Twilio:FromNumber` or `Twilio:MessagingServiceSid` for real OTP delivery; see [SMS setup](docs/SMS.md). Non-secret JWT issuer/audience and an eight-hour lifetime remain in appsettings.json. Startup validates JWT, CORS, OTP, SMS and notification options before staff database bootstrap. JWT expiry must be between 0.01 and 8760 hours.
 
-In the sibling frontend directory, run `npm install` and `npm run dev`. Open `http://localhost:5173`; backend Swagger is `http://localhost:5101/swagger`. Development allows the `http://localhost:5173` CORS origin and exposes the demo OTP. Use any seeded passenger number listed in AGENTS.md. SMS delivery is still deferred. The reproducible active-trip demo remains Task 12.
+In the sibling frontend directory, run `npm install` and `npm run dev`. Open `http://localhost:5173`; backend Swagger is `http://localhost:5101/swagger`. Development allows the `http://localhost:5173` CORS origin and exposes the demo OTP. Use any seeded passenger number listed in AGENTS.md. Logging mode prints SMS only in Development; no SMS is sent by default. The reproducible active-trip demo remains Task 12.
 
 ### Passenger notification scheduler
 
-Apply the `AddUniquePassengerNotifications` migration before running this version:
+Apply the `AddNotificationChannelUniqueness` migration before running this version:
 
 ```powershell
 dotnet ef database update -- --environment Development
@@ -40,7 +40,7 @@ Messages use the stop name and SAST ETA. Delay alerts continue to work.
 If a ticket is issued late or the scheduler was offline, only the most urgent
 crossed threshold is sent. Earlier thresholds are then satisfied, even if the ETA
 later moves backwards. Past ETAs do not generate reminders. A filtered unique
-index guards reminder/arrival `(UserId, TripId, Type)` keys against concurrent
+index guards reminder/arrival `(UserId, TripId, Type, Channel)` keys against concurrent
 inserts; Delay alerts can repeat. Failed inserts are isolated and logged.
 
 For a Development demo, fast-forward only the scheduler's clock with an optional
@@ -54,12 +54,13 @@ dotnet run --launch-profile http -- --Demo:ClockOffsetMinutes=270
 Hopon after changing the value. For a destination ETA five hours from real now,
 270 advances the scheduler to 30 minutes before the stop. Reset to 0 for normal
 use. The offset is ignored outside Development. It does not change stored times,
-the passenger ETA, JWT/OTP expiry, or the driver's arrival action.
+the passenger ETA, JWT/OTP expiry, notification timestamps, or the driver's arrival action.
 
 Read the resulting feed with a passenger bearer token at
-`GET http://localhost:5101/api/notifications/my`. This task generates in-app logs;
-SMS, emergency-contact delivery and the passenger notification UI remain Tasks
-6, 7 and 9. Legacy tickets without destination stops receive no scheduled or
+`GET http://localhost:5101/api/notifications/my`. In-app delivery always works. Optional SMS uses the same notification service;
+`Notifications:SmsEnabled` defaults false. [SMS setup](docs/SMS.md) documents
+the type allowlist, Twilio setup and failure behavior. Emergency-contact delivery
+and the passenger notification UI remain Tasks 7 and 9. Legacy tickets without destination stops receive no scheduled or
 destination arrival alerts. Existing SAST-only schedule data still needs the
 manual correction described in [UTC time handling](docs/UTC_TIME.md).
 
@@ -152,7 +153,7 @@ This project serves two purposes:
 | Realtime | SignalR |
 | Authentication | JWT + OTP/PIN login |
 | Maps | MapLibre GL JS + OpenFreeMap |
-| SMS Notifications | Twilio (planned; not wired) |
+| SMS Notifications | Logging (default) / Twilio (opt-in) |
 | Hosting | Azure App Service / IIS |
  
 **Why the frontend is split:**

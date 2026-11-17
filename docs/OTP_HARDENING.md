@@ -10,7 +10,7 @@ OTP codes use cryptographic randomness, six digits and BCrypt hashing. A success
 
 `Otp:ExposeCodeInResponse` defaults to `false`. `appsettings.Development.json` sets it to `true`. A hosted pitch demo can opt in with the environment variable `Otp__ExposeCodeInResponse=true`, regardless of hosting environment. The existing React login page displays `devOnlyCode` when present. The response property is null when disabled.
 
-Logging is independent: plaintext OTPs are logged only in Development, including when response exposure is disabled. Production and Staging never log the OTP through `OtpService`, even when response exposure is enabled. SMS delivery remains deferred to Task 6.
+Task 6 now delivers OTPs through `ISmsSender`. Logging mode prints the SMS only in Development, independently of response exposure; Production and Staging redact the body. Twilio never logs message bodies. A failed send removes the new OTP row, restores older unused codes and does not consume the request limit. See [SMS setup](SMS.md).
 
 Known-number requests return 200 while unknown-number requests return 400 with `Unable to process this request.` This still allows number enumeration and is an accepted demo limitation. Inactive numbers get the same generic error as unknown numbers. Existing expiry, wrong-code and rate-limit messages remain actionable.
 

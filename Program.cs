@@ -3,6 +3,7 @@ using Hopon.Api.Hubs;
 using Hopon.Api.Services;
 using Hopon.Api.Services.Interfaces;
 using Hopon.Api.Services.Notifications;
+using Hopon.Api.Services.Sms;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -21,6 +22,13 @@ builder.Services.AddOptions<Hopon.Api.Services.CorsOptions>().BindConfiguration(
         "Cors:AllowedOrigins must contain only HTTP/HTTPS origins without paths, trailing slashes or wildcards.")
     .ValidateOnStart();
 builder.Services.AddOptions<OtpOptions>().BindConfiguration("Otp").ValidateOnStart();
+builder.Services.AddSmsSending();
+builder.Services.AddOptions<NotificationOptions>().Configure<IConfiguration>((options, configuration) =>
+    {
+        options.SmsEnabled = configuration.GetValue<bool>("Notifications:SmsEnabled");
+        options.SmsTypes = configuration.GetSection("Notifications:SmsTypes").Get<string[]>() ?? options.SmsTypes;
+    })
+    .Validate(o => o.HasValidTypes(), "Notifications:SmsTypes must contain NotificationType names.").ValidateOnStart();
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
