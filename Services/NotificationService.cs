@@ -3,6 +3,7 @@ using Hopon.Api.DTOs.Notifications;
 using Hopon.Api.Models;
 using Hopon.Api.Models.Enums;
 using Hopon.Api.Services.Interfaces;
+using Hopon.Api.Services.Notifications;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hopon.Api.Services
@@ -10,10 +11,41 @@ namespace Hopon.Api.Services
     public class NotificationService : INotificationService
     {
         private readonly HoponDbContext _db;
+        private readonly PassengerNotificationWriter _writer;
+        private readonly TimeProvider _timeProvider;
 
-        public NotificationService(HoponDbContext db)
+        public NotificationService(HoponDbContext db, PassengerNotificationWriter writer, TimeProvider timeProvider)
         {
             _db = db;
+            _writer = writer;
+            _timeProvider = timeProvider;
+        }
+
+        public async Task NotifyStopArrivedAsync(TripStop stop)
+        {
+            var userIds = await _db.Tickets.AsNoTracking()
+                .Where(t => t.IsActive && t.TripId == stop.TripId && t.DestinationTripStopId == stop.Id)
+                .Select(t => t.UserId).ToListAsync();
+            if (userIds.Count == 0)
+                return;
+
+            var existing = await _db.NotificationLogs.AsNoTracking()
+                .Where(n => n.TripId == stop.TripId && n.Type == NotificationType.Arrival && userIds.Contains(n.UserId))
+                .Select(n => n.UserId).ToListAsync();
+            var alreadySent = existing.ToHashSet();
+            var now = _timeProvider.GetUtcNow().UtcDateTime;
+            foreach (var userId in userIds)
+            {
+                if (alreadySent.Contains(userId))
+                    continue;
+
+                await _writer.TryWriteAsync(new NotificationLog
+                {
+                    UserId = userId, TripId = stop.TripId, Type = NotificationType.Arrival,
+                    Channel = NotificationChannel.InApp, Status = NotificationStatus.Sent,
+                    Message = NotificationMessages.Arrival(stop.Stop.Name), CreatedAt = now, SentAt = now
+                });
+            }
         }
 
         public async Task NotifyTripDelayedAsync(Trip trip, string reason)

@@ -22,6 +22,47 @@ Required local keys: `Jwt:Key` (at least 32 characters) and `ConnectionStrings:H
 
 In the sibling frontend directory, run `npm install` and `npm run dev`. Open `http://localhost:5173`; backend Swagger is `http://localhost:5101/swagger`. Development allows the `http://localhost:5173` CORS origin and exposes the demo OTP. Use any seeded passenger number listed in AGENTS.md. SMS delivery is still deferred. The reproducible active-trip demo remains Task 12.
 
+### Passenger notification scheduler
+
+Apply the `AddUniquePassengerNotifications` migration before running this version:
+
+```powershell
+dotnet ef database update -- --environment Development
+```
+
+Every 30 seconds, Hopon checks active tickets on InProgress/Delayed trips using
+the passenger's Pending destination stop and its schedule-offset ETA. Passengers
+who have alighted are excluded. It creates in-app reminders at 4 hours, 2 hours,
+30 minutes and 10 minutes; the last reminder says to get ready to get off.
+Marking a destination Arrived in the driver page/API creates an arrival alert.
+Messages use the stop name and SAST ETA. Delay alerts continue to work.
+
+If a ticket is issued late or the scheduler was offline, only the most urgent
+crossed threshold is sent. Earlier thresholds are then satisfied, even if the ETA
+later moves backwards. Past ETAs do not generate reminders. A filtered unique
+index guards reminder/arrival `(UserId, TripId, Type)` keys against concurrent
+inserts; Delay alerts can repeat. Failed inserts are isolated and logged.
+
+For a Development demo, fast-forward only the scheduler's clock with an optional
+offset (default 0):
+
+```powershell
+dotnet run --launch-profile http -- --Demo:ClockOffsetMinutes=270
+```
+
+`Demo__ClockOffsetMinutes=270` is the equivalent environment variable. Restart
+Hopon after changing the value. For a destination ETA five hours from real now,
+270 advances the scheduler to 30 minutes before the stop. Reset to 0 for normal
+use. The offset is ignored outside Development. It does not change stored times,
+the passenger ETA, JWT/OTP expiry, or the driver's arrival action.
+
+Read the resulting feed with a passenger bearer token at
+`GET http://localhost:5101/api/notifications/my`. This task generates in-app logs;
+SMS, emergency-contact delivery and the passenger notification UI remain Tasks
+6, 7 and 9. Legacy tickets without destination stops receive no scheduled or
+destination arrival alerts. Existing SAST-only schedule data still needs the
+manual correction described in [UTC time handling](docs/UTC_TIME.md).
+
 ### Hosting configuration
 
 [.env.example](.env.example) lists environment variable names such as `Jwt__Key`, `ConnectionStrings__HoponDb`, `Admin__Username`, and `Admin__Password`. ASP.NET Core reads environment variables directly; it does not automatically read `.env`. Supply real values through the host's settings. For a separate passenger origin set `Cors__AllowedOrigins__0=https://your-passenger-host.example` (and indexed entries for more origins). Omit origin variables to deny all cross-origin requests. Do not set blank origin entries. Each origin must have HTTP/HTTPS scheme, no wildcard, path, or trailing slash. Same-origin hosting does not require CORS.

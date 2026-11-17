@@ -8,6 +8,17 @@ Companion to `AGENTS.md` (read that first). This file is the **source of truth f
 
 Task 0 audit: **2026-11-16**, covering both repositories (`backend` = Hopon.Api; `frontend` = hopon-passenger). This handoff is copied into both repositories because the workspace-level `docs` directory is outside Git. API implementation is distinguished from usable UI below.
 
+**Task 5 — Destination notification scheduler (2026-11-17)**
+- [x] Pure threshold rules choose only the most urgent crossed 4h/2h/30min/10min reminder, suppress equal/less urgent repeats after catch-up or ETA changes, and skip past ETAs. Message helpers include the passenger stop and SAST ETA; the ten-minute reminder says to get ready to get off.
+- [x] Hosted scheduler uses a 30-second `PeriodicTimer`, injected `TimeProvider.System` and a new scope per tick. Read-only ticket/log queries are batched; only InProgress/Delayed trips, active tickets, Pending destinations belonging to that trip and passengers without Alighted logs qualify. Legacy null destinations are skipped. Per-ticket saves isolate failures; later ticks retry failed reminder inserts while still due.
+- [x] Driver stop arrival now generates guarded InApp Arrival notifications for active destination ticket holders after saving the stop. Repeated arrivals/writes do not duplicate logs. Existing repeatable Delay notifications remain unchanged. Emergency-contact/SMS delivery remains Tasks 7/6; feed UI remains Task 9.
+- [x] Migration `AddUniquePassengerNotifications` adds a filtered unique `(UserId, TripId, Type)` index for reminder/arrival types only, closing insert races while allowing repeated Delay logs. Applied successfully to local SQL Server with `dotnet ef database update --no-build -- --environment Development`. No existing migration edited or schedule data shifted.
+- [x] Optional `Demo:ClockOffsetMinutes` defaults to 0 and affects only the Development scheduler's notion of now. README documents fast-forwarding, restart/reset, eligibility, catch-up and the existing notification feed endpoint.
+- [x] Focused SQLite/FakeTimeProvider coverage includes all threshold boundaries and sent combinations, different passenger stops/ETAs, all eligibility exclusions, batch read counts, per-ticket failure recovery, filtered unique-key races, timer shutdown, Development-only offsets, arrival hooks, repeatable delays and private `/api/notifications/my` feed visibility.
+- [x] Verification: `dotnet build` (zero errors), `dotnet test --no-build` (281 passed, including 161 new notification cases), frontend `npm run lint`/`npm run build`, and local SQL Server migration passed. Existing DriverController nullable and Vite chunk warnings remain. The full-suite timer test now waits for save completion rather than polling a shared SQLite connection during its write.
+- Local runtime limit: direct `dotnet run --no-build --launch-profile http` is still blocked by Windows Application Control (the existing Task 4b environment issue). No policy was changed. SQL Server migration and isolated HTTP/timer tests work; a direct local login → map smoke check remains unverified for Task 5.
+- Assumptions: reminder/arrival uniqueness spans all channels/statuses for a user/trip/type, while Delay/Emergency logs may repeat. Catch-up satisfies older thresholds through the persisted urgent type without creating pretend Sent rows. Arrival recipients include active destination tickets even if already alighted, as required separately from the scheduler's alighting exclusion. Arrival generation runs in the driver arrival action, without a separate retry/outbox worker.
+
 **Task 4b — UTC storage and SAST display (2026-11-17)**
 - [x] `SaTime` converts admin SAST wall-clock input to UTC with a fixed +02:00 offset and no OS timezone IDs; UTC inputs are unchanged. EF conventions preserve writes and mark required/nullable DateTimes UTC on read, preserving ticks and nulls.
 - [x] Admin Create/Edit save UTC and Edit pre-fills SAST. Admin Index/Details, ticket destination times, and driver schedule/stop/GPS displays use SAST; GPS is labelled SAST. Driver timestamps continue to use UTC.
@@ -68,7 +79,7 @@ Task 0 audit: **2026-11-16**, covering both repositories (`backend` = Hopon.Api;
 - [x] EF Core model and five migrations: Users, EmergencyContacts, Drivers (username + BCrypt hash), Buses, Stops, BusRoutes, RouteStops, Trips, TripStops, Tickets, LocationUpdates, BoardingLogs, NotificationLogs, OtpRequests. `Data/HoponDbContext.cs` and migrations `20260725213426_SeedUsers` / `20260804130147_SeededANewDriver` seed three users and one driver (`driver1`, id 2).
 - [x] OTP API (`POST /api/auth/otp/request`, `/api/auth/otp/verify`): normalized SA mobile numbers, cryptographically generated BCrypt codes, 10-minute expiry, three requests per 10 minutes, five verification attempts, active existing user required, older unused OTP invalidation, passenger JWT via `IJwtTokenService`. Code response exposure is opt-in; OTP logging is Development-only. SMS delivery is not implemented.
 - [x] Trip access service and `[RequireTripAccess]` filter; missing active ticket returns 404. Passenger API: access-check, my-trips (live/past), boarding-status, board, alight, history, map-data.
-- [x] Notifications API (`GET /api/notifications/my`); only driver-delay in-app notifications are generated. No reminder scheduler or SMS sender.
+- [x] Notifications API (`GET /api/notifications/my`), time-based passenger destination reminders, driver destination-arrival alerts and existing delay notifications. No SMS sender; passenger feed UI remains Task 9.
 - [x] Emergency-contact CRUD (`/api/emergency-contact`); no arrival-alert delivery.
 - [x] Driver API (`/api/driver/...`, Driver role): my-trip, start, delay, complete, location; login at `/api/driver/auth/login`.
 - [x] SignalR `/hubs/trip`, JWT query-string authentication, trip-group access checks; broadcasts `ReceiveLocationUpdate`, `ReceiveTripStatusUpdate`, `ReceiveStopUpdate`. Passenger hook subscribes to location/status only.
@@ -117,7 +128,7 @@ Fix these as part of the tasks below (each is referenced there).
 2. Resolved in Task 2: passenger endpoints and TripHub require the Passenger role; driver APIs require Driver, preventing overlapping IDs from crossing identities.
 3. Resolved in Task 3: cryptographic OTP generation, older unused request invalidation, active-user checks and Development-only logging. Response code exposure is independently opt-in for demos.
 4. Resolved in Task 3: shared SA mobile normalisation for both OTP endpoints and emergency-contact create/update; invalid numbers return 400.
-5. Resolved in Task 4: tickets have nullable origin/destination TripStop FKs, with destination required and ordered for new issuance. Existing tickets keep null stops; notification delivery remains future work.
+5. Resolved in Task 4: tickets have nullable origin/destination TripStop FKs, with destination required and ordered for new issuance. Task 5 generates reminders/arrival alerts for destination tickets; old null-stop tickets are skipped for these alerts.
 6. **Admin status changes bypass the domain flow.** `UpdateTripStatusAsync` (Mark delayed / completed / cancel) doesn't set Actual times, doesn't notify passengers, and doesn't broadcast over SignalR.
 7. Resolved in Task 1: stop arrival/departure queries require the authorized trip id.
 8. Resolved inline in Task 1: RecordLocationAsync interface parameter names now match the implementation (latitude, longitude); behavior is unchanged.
@@ -174,8 +185,8 @@ Each task = one branch + one PR. Acceptance criteria are what "done" means.
 - [x] Add nullable origin/destination TripStop FKs with restricted delete, migration, validated admin selectors, and destination fields in history/my-trips/access/admin DTOs. React "Your stop" display is deferred to Task 9 as instructed.
 - *Done when:* every newly issued ticket has a destination stop; existing data still works.
 
-**Task 5: Notification scheduler (4h / 2h / 30min / 10min / arrival)**
-- A `BackgroundService` ticking every 30–60 s. For each active trip and each active ticket with a destination stop, compute the passenger's stop ETA = stop `ScheduledArrival` + trip departure delay (reuse the schedule-offset idea). When ETA − now crosses 4h / 2h / 30min / 10min, create a `NotificationLog` (types already exist) **exactly once** (guard with a unique check on UserId + TripId + Type). Arrival notification fires when the passenger's stop is marked Arrived.
+**Task 5: Notification scheduler (4h / 2h / 30min / 10min / arrival) — complete**
+- [x] A 30-second `BackgroundService` computes destination ETA through `CalculateStopEta`, applies catch-up rules and creates guarded InApp logs. Driver arrival creates destination Arrival logs; a filtered unique index enforces user/trip/type uniqueness. Fake-clock and feed tests verify generation and access.
 - Stop reminder: the 10-minute notification doubles as the "get ready to get off" reminder.
 - Delay notifications keep working as today.
 - Unit-test the threshold logic as a pure function.

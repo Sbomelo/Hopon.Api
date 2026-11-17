@@ -124,6 +124,8 @@ namespace Hopon.Api.Services
             ts.ActualArrival = DateTime.UtcNow;
             await _db.SaveChangesAsync();
 
+            await _notificationService.NotifyStopArrivedAsync(ts);
+
             await _hubContext.Clients.Group(TripHub.GroupName(ts.TripId))
                 .SendAsync("ReceiveStopUpdate", new
                 {
