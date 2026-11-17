@@ -6,6 +6,11 @@
 
 <h1>Edit Trip</h1>
 
+@if (Model.LifecycleError != null)
+{
+    <p class="text-error" role="alert">@Model.LifecycleError</p>
+}
+
 <form method="post" class="hopon-form" style="max-width:480px;">
     <div asp-validation-summary="All" class="text-error"></div>
 
@@ -29,9 +34,23 @@
     <button type="submit" class="btn-primary">Save Changes</button>
 </form>
 
-<form method="post" asp-page-handler="MarkDelayed" asp-route-id="@Model.Id" style="display:inline; margin-top:1rem;">
-    <button type="submit" class="btn-secondary">Mark as Delayed</button>
-</form>
-<form method="post" asp-page-handler="MarkCompleted" asp-route-id="@Model.Id" style="display:inline; margin-top:1rem;">
-    <button type="submit" class="btn-secondary">Mark as Completed</button>
-</form>
+@if (TripStatusRules.CanTransition(Model.Status, TripStatus.Delayed))
+{
+    <form method="post" asp-page-handler="MarkDelayed" asp-route-id="@Model.Id" class="hopon-form" style="max-width:480px; margin-top:1rem;">
+        <label asp-for="DelayReason">Delay reason (optional)</label>
+        <input asp-for="DelayReason" />
+        <button type="submit" class="btn-secondary">Mark as Delayed</button>
+    </form>
+}
+@if (Model.Status == TripStatus.Delayed && TripStatusRules.CanTransition(Model.Status, TripStatus.InProgress))
+{
+    <form method="post" asp-page-handler="Resume" asp-route-id="@Model.Id" style="display:inline; margin-top:1rem;">
+        <button type="submit" class="btn-secondary">Resume</button>
+    </form>
+}
+@if (TripStatusRules.CanTransition(Model.Status, TripStatus.Completed))
+{
+    <form method="post" asp-page-handler="MarkCompleted" asp-route-id="@Model.Id" style="display:inline; margin-top:1rem;">
+        <button type="submit" class="btn-secondary">Mark as Completed</button>
+    </form>
+}

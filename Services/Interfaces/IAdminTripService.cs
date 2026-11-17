@@ -9,7 +9,6 @@ namespace Hopon.Api.Services.Interfaces
         Task<AdminTripDetailDto?> GetTripDetailAsync(int tripId);
         Task<int> CreateTripAsync(int busRouteId, int busId, int? driverId, DateTime scheduledDeparture, DateTime scheduledArrival);
         Task<bool> UpdateTripAsync(int tripId, int busRouteId, int busId, int? driverId, DateTime scheduledDeparture, DateTime scheduledArrival);
-        Task<bool> UpdateTripStatusAsync(int tripId, TripStatus newStatus);
         Task<List<SelectOptionDto>> GetRouteOptionsAsync();
         Task<List<SelectOptionDto>> GetBusOptionsAsync();
         Task<List<SelectOptionDto>> GetDriverOptionsAsync();

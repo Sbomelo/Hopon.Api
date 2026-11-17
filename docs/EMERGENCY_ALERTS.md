@@ -32,7 +32,7 @@ behavior is unchanged.
 
 ## Completion fallback and duplicate prevention
 
-`DriverTripService.CompletedAsync` saves completion and then checks tickets ending
+`TripLifecycleService.CompletedAsync` saves completion and then checks tickets ending
 at the highest `TripStop.SequenceOrder` of that trip. This covers a driver who
 completes without marking the final stop Arrived, including a final stop already
 marked Departed or Skipped. It does not invent stop arrival timestamps/statuses or
@@ -53,8 +53,9 @@ unknown delivery outcome; Hopon deliberately does not resend an ambiguous attemp
 The scheduler does not retry emergency alerts. Inactive (voided) tickets are
 excluded in both arrival and completion queries.
 
-This is the driver's completion path. Admin status-flow consolidation remains
-Task 8, including the existing admin completion bypass. The dashboard feed here
+Task 8 routes both driver and admin completion through this same lifecycle path.
+Task 8 runtime acceptance is pending Windows Application Control; see HANDOFF.
+The dashboard feed here
 only covers emergency arrival outcomes; the general feed/unread UI remains Task 9.
 
 ## Run and verify

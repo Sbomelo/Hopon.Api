@@ -14,6 +14,11 @@ else
     <h1>@trip.RouteName</h1>
     <p><span class="badge">@trip.Status</span></p>
 
+    @if (Model.LifecycleError != null)
+    {
+        <p class="text-error" role="alert">@Model.LifecycleError</p>
+    }
+
     <table class="hopon-table">
         <tr><th>Bus</th><td>@trip.BusRegistration</td></tr>
         <tr><th>Driver</th><td>@(trip.DriverName ?? "Unassigned")</td></tr>
@@ -27,9 +32,14 @@ else
         @if (trip.Status is "Scheduled" or "Delayed" or "InProgress")
         {
             <a class="btn-secondary" asp-page="./Edit" asp-route-id="@trip.TripId">Edit Trip</a>
-            <form method="post" asp-page-handler="Cancel" asp-route-id="@trip.TripId" style="display:inline;">
-                <button type="submit" class="btn-danger" onclick="return confirm('Cancel this trip?');">Cancel Trip</button>
-            </form>
+            <details style="margin-top:1rem;">
+                <summary>Cancel Trip</summary>
+                <form method="post" asp-page-handler="Cancel" asp-route-id="@trip.TripId" class="hopon-form" style="max-width:480px;" onsubmit="return confirm('Cancel this trip and notify ticket holders?');">
+                    <label asp-for="CancellationReason">Cancellation reason (optional)</label>
+                    <input asp-for="CancellationReason" />
+                    <button type="submit" class="btn-danger">Confirm cancellation</button>
+                </form>
+            </details>
         }
     </div>
 

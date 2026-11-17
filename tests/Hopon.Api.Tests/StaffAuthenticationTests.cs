@@ -86,7 +86,7 @@ public class StaffAuthenticationTests
             Assert.Equal(TripStopStatus.Pending, stop.Status);
             Assert.Null(stop.ActualArrival);
             Assert.Null(stop.ActualDeparture);
-            var service = scope.ServiceProvider.GetRequiredService<IDriverTripService>();
+            var service = scope.ServiceProvider.GetRequiredService<ITripLifecycleService>();
             var otherTrip = (await db.Trips.FindAsync(102))!;
             Assert.False((await service.MarkStopArrivedAsync(otherTrip, 101)).Success);
             Assert.False((await service.MarkStopDepartedAsync(otherTrip, 101)).Success);

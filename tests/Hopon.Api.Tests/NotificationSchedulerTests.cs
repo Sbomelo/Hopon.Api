@@ -37,7 +37,7 @@ public class NotificationSchedulerTests
 
         using var scope = fixture.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<HoponDbContext>();
-        var driver = scope.ServiceProvider.GetRequiredService<IDriverTripService>();
+        var driver = scope.ServiceProvider.GetRequiredService<ITripLifecycleService>();
         var trip = (await db.Trips.FindAsync(fixture.TripId))!;
         Assert.True((await driver.MarkStopArrivedAsync(trip, fixture.FirstStopId)).Success);
         Assert.False((await driver.MarkStopArrivedAsync(trip, fixture.FirstStopId)).Success);
@@ -128,7 +128,7 @@ public class NotificationSchedulerTests
         using (var scope = fixture.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<HoponDbContext>();
-            var driver = scope.ServiceProvider.GetRequiredService<IDriverTripService>();
+            var driver = scope.ServiceProvider.GetRequiredService<ITripLifecycleService>();
             var trip = (await db.Trips.FindAsync(fixture.TripId))!;
             Assert.True((await driver.MarkStopArrivedAsync(trip, fixture.FirstStopId)).Success);
             Assert.True((await driver.MarkStopArrivedAsync(trip, fixture.SecondStopId)).Success);
@@ -142,6 +142,8 @@ public class NotificationSchedulerTests
             Assert.Equal("You have arrived at Johannesburg Park Station.", arrivals.Single(n => n.UserId == 2).Message);
 
             Assert.True((await driver.ReportDelayedAsync(trip, "Traffic")).Success);
+            Assert.False((await driver.ReportDelayedAsync(trip, "Duplicate delay")).Success);
+            Assert.True((await driver.ResumeFromDelayAsync(trip)).Success);
             Assert.True((await driver.ReportDelayedAsync(trip, "Roadworks")).Success);
             Assert.Equal(2, (await fixture.Logs()).Count(n => n.UserId == 1 && n.Type == NotificationType.Delay));
             Assert.Contains(await notifications.GetNotificationsForUserAsync(1), n => n.Type == "Arrival");
@@ -267,7 +269,7 @@ public class NotificationSchedulerTests
             services.AddSingleton<Hopon.Api.Services.Sms.ISmsSender>(new FakeSmsSender());
             services.AddOptions<NotificationOptions>().Configure(o => o.SmsEnabled = smsEnabled);
             services.AddScoped<INotificationService, NotificationService>();
-            services.AddScoped<IDriverTripService, DriverTripService>();
+            services.AddScoped<ITripLifecycleService, TripLifecycleService>();
             services.AddSingleton<NotificationSchedulerService>();
             Services = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
         }

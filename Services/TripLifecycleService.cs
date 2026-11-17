@@ -5,20 +5,18 @@ using Hopon.Api.Models.Enums;
 using Hopon.Api.Services.Interfaces;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Principal;
-using System.Threading.Tasks.Dataflow;
 using Hopon.Api.DTOs.RealTime;
 
 namespace Hopon.Api.Services
 {
-    public class DriverTripService : IDriverTripService
+    public class TripLifecycleService : ITripLifecycleService
     {
         private readonly HoponDbContext _db;
-        private readonly ILogger<DriverTripService> _logger;
+        private readonly ILogger<TripLifecycleService> _logger;
         private readonly IHubContext<TripHub> _hubContext;
         private readonly INotificationService _notificationService;
 
-        public DriverTripService(HoponDbContext db, ILogger<DriverTripService> logger, IHubContext<TripHub> hubContext, INotificationService notificationService)
+        public TripLifecycleService(HoponDbContext db, ILogger<TripLifecycleService> logger, IHubContext<TripHub> hubContext, INotificationService notificationService)
         {
             _db = db;
             _logger = logger;
@@ -30,8 +28,8 @@ namespace Hopon.Api.Services
         public async Task<(bool Success, string? Error)> StartTripAsync(Trip trip)
         {
 
-            if (trip.Status != TripStatus.Scheduled)
-                return (false, $"Trip muat be Scheduled to start. Current trip status is {trip.Status}.");
+            if (trip.Status != TripStatus.Scheduled || !TripStatusRules.CanTransition(trip.Status, TripStatus.InProgress))
+                return (false, $"Cannot start a trip that is {trip.Status}. Start requires Scheduled; use Resume for a delayed trip.");
 
             trip.Status = TripStatus.InProgress;
             trip.ActualDeparture = DateTime.UtcNow;
@@ -43,8 +41,8 @@ namespace Hopon.Api.Services
         }
         public async Task<(bool Success, string? Error)> ReportDelayedAsync(Trip trip, string reason)
         {
-            if (trip.Status != TripStatus.InProgress && trip.Status != TripStatus.Delayed)
-                return (false, $"Trip must be Inprogress to report a delay. Current Trip Status is {trip.Status}.");
+            if (!TripStatusRules.CanTransition(trip.Status, TripStatus.Delayed))
+                return InvalidTransition(trip, TripStatus.Delayed);
 
             trip.Status = TripStatus.Delayed;
 
@@ -61,8 +59,8 @@ namespace Hopon.Api.Services
 
         public async Task<(bool Success, string? Error)> ResumeFromDelayAsync(Trip trip)
         {
-            if (trip.Status != TripStatus.Delayed)
-                return (false, $"Trip is not currently delayed. Current status: {trip.Status}.");
+            if (trip.Status != TripStatus.Delayed || !TripStatusRules.CanTransition(trip.Status, TripStatus.InProgress))
+                return (false, $"Cannot resume a trip that is {trip.Status}. Resume requires Delayed.");
 
             trip.Status = TripStatus.InProgress;
             await _db.SaveChangesAsync();
@@ -73,8 +71,8 @@ namespace Hopon.Api.Services
 
         public async Task<(bool Success, string? Error)> CompletedAsync(Trip trip)
         {
-            if (trip.Status != TripStatus.InProgress && trip.Status != TripStatus.Delayed)
-                return (false, $"Trip must be Inprogress to mark it complete. Current trip status is {trip.Status}.");
+            if (!TripStatusRules.CanTransition(trip.Status, TripStatus.Completed))
+                return InvalidTransition(trip, TripStatus.Completed);
 
             trip.Status = TripStatus.Completed;
             trip.ActualArrival = DateTime.UtcNow;
@@ -87,7 +85,23 @@ namespace Hopon.Api.Services
 
             return (true, null);
         }
-        public async Task<(bool Success, string? Error)> RecordLocationAsync(Trip trip, double  latitude, double longitude)
+        public async Task<(bool Success, string? Error)> CancelAsync(Trip trip, string? reason)
+        {
+            if (!TripStatusRules.CanTransition(trip.Status, TripStatus.Cancelled))
+                return InvalidTransition(trip, TripStatus.Cancelled);
+
+            trip.Status = TripStatus.Cancelled;
+            await _db.SaveChangesAsync();
+
+            await _notificationService.NotifyTripCancelledAsync(trip, reason);
+            await BroadcastStatusAsync(trip, reason);
+            return (true, null);
+        }
+
+        private static (bool Success, string? Error) InvalidTransition(Trip trip, TripStatus target)
+            => (false, $"Cannot change trip status from {trip.Status} to {target}.");
+
+        public async Task<(bool Success, string? Error)> RecordLocationAsync(Trip trip, double latitude, double longitude)
         {
             if (!TripStatusRules.IsTrackingActive(trip.Status))
                 return (false, $"Cannot record location for a trip that is {trip.Status}");

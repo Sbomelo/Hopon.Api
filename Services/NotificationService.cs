@@ -171,6 +171,20 @@ namespace Hopon.Api.Services
                     [NotificationChannel.InApp, NotificationChannel.Sms]);
         }
 
+        public async Task NotifyTripCancelledAsync(Trip trip, string? reason)
+        {
+            var userIds = await _db.Tickets.AsNoTracking()
+                .Where(t => t.TripId == trip.Id && t.IsActive)
+                .Select(t => t.UserId).Distinct().ToListAsync();
+            var message = "Your trip has been cancelled.";
+            if (!string.IsNullOrWhiteSpace(reason))
+                message += $" {reason.Trim()}";
+
+            foreach (var userId in userIds)
+                await CreateAsync(userId, trip.Id, NotificationType.Cancellation, message,
+                    [NotificationChannel.InApp, NotificationChannel.Sms]);
+        }
+
         public async Task<List<NotificationDto>> GetNotificationsForUserAsync(int userId)
         {
             return await _db.NotificationLogs
