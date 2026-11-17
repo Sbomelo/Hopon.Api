@@ -53,14 +53,14 @@ else
             <div style="background: var(--color-surface-alt); border: 1px solid var(--color-border);
                 border-radius: 8px; padding: 0.6rem 0.75rem;">
                 <div style="font-size: 0.65rem; opacity: 0.5; letter-spacing: 0.05em; margin-bottom: 0.2rem;">DEPARTS</div>
-                <div style="font-weight: 600; font-size: 0.95rem;">@t.ScheduledDeparture.ToString("HH:mm")</div>
-                <div style="font-size: 0.72rem; opacity: 0.45;">@t.ScheduledDeparture.ToString("dd MMM")</div>
+                <div style="font-weight: 600; font-size: 0.95rem;">@SaTime.ToSa(t.ScheduledDeparture).ToString("HH:mm")</div>
+                <div style="font-size: 0.72rem; opacity: 0.45;">@SaTime.ToSa(t.ScheduledDeparture).ToString("dd MMM")</div>
             </div>
             <div style="background: var(--color-surface-alt); border: 1px solid var(--color-border);
                 border-radius: 8px; padding: 0.6rem 0.75rem;">
                 <div style="font-size: 0.65rem; opacity: 0.5; letter-spacing: 0.05em; margin-bottom: 0.2rem;">ARRIVES</div>
-                <div style="font-weight: 600; font-size: 0.95rem;">@t.ScheduledArrival.ToString("HH:mm")</div>
-                <div style="font-size: 0.72rem; opacity: 0.45;">@t.ScheduledArrival.ToString("dd MMM")</div>
+                <div style="font-weight: 600; font-size: 0.95rem;">@SaTime.ToSa(t.ScheduledArrival).ToString("HH:mm")</div>
+                <div style="font-size: 0.72rem; opacity: 0.45;">@SaTime.ToSa(t.ScheduledArrival).ToString("dd MMM")</div>
             </div>
         </div>
 
@@ -68,7 +68,7 @@ else
         {
             <div style="margin-top: 0.75rem; font-size: 0.78rem; opacity: 0.5;">
                 Last GPS: @t.LastLatitude!.Value.ToString("F4")°, @t.LastLongitude!.Value.ToString("F4")°
-                <span style="margin-left: 0.3rem;">· @t.LastLocationAt.Value.ToString("HH:mm:ss") UTC</span>
+                <span style="margin-left: 0.3rem;">· @SaTime.ToSa(t.LastLocationAt.Value).ToString("HH:mm:ss") SAST</span>
             </div>
         }
     </div>
@@ -222,10 +222,10 @@ else
                         @stop.StopName
                     </div>
                     <div style="font-size: 0.72rem; opacity: 0.55; margin-top: 0.1rem;">
-                        Sch. @stop.ScheduledArrival.ToString("HH:mm")
+                        Sch. @SaTime.ToSa(stop.ScheduledArrival).ToString("HH:mm")
                         @if (stop.ActualArrival.HasValue)
                         {
-                            <span> · Arrived @stop.ActualArrival.Value.ToString("HH:mm")</span>
+                            <span> · Arrived @SaTime.ToSa(stop.ActualArrival.Value).ToString("HH:mm")</span>
                         }
                         <span style="margin-left: 0.3rem;">· @stop.Status</span>
                     </div>

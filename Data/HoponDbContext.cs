@@ -22,6 +22,14 @@ public class HoponDbContext : DbContext
     public DbSet<BoardingLog> BoardingLogs { get; set; } = null!;
     public DbSet<NotificationLog> NotificationLogs { get; set; } = null!;
     public DbSet<OtpRequest> OtpRequests { get; set; } = null!;
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        // EF handles nulls without passing them through the converter.
+        configurationBuilder.Properties<DateTime>().HaveConversion<UtcDateTimeConverter>();
+        configurationBuilder.Properties<DateTime?>().HaveConversion<UtcDateTimeConverter>();
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         //User
