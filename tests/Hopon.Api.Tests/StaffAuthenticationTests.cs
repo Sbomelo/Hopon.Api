@@ -227,6 +227,8 @@ internal sealed class StaffApplication : WebApplicationFactory<Program>
         }));
         builder.ConfigureServices(services =>
         {
+            services.RemoveAll<Hopon.Api.Services.Sms.ISmsSender>();
+            services.AddSingleton<Hopon.Api.Services.Sms.ISmsSender>(new FakeSmsSender());
             services.RemoveAll<HoponDbContext>();
             services.RemoveAll<DbContextOptions<HoponDbContext>>();
             services.AddDbContext<HoponDbContext>(options => options.UseSqlite(connection));

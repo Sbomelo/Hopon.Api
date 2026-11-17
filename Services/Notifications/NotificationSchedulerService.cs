@@ -2,6 +2,7 @@ using Hopon.Api.Data;
 using Hopon.Api.Models;
 using Hopon.Api.Models.Enums;
 using Microsoft.EntityFrameworkCore;
+using Hopon.Api.Services.Interfaces;
 
 namespace Hopon.Api.Services.Notifications;
 
@@ -53,7 +54,7 @@ public sealed class NotificationSchedulerService : BackgroundService
     {
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<HoponDbContext>();
-        var writer = scope.ServiceProvider.GetRequiredService<PassengerNotificationWriter>();
+        var notifications = scope.ServiceProvider.GetRequiredService<INotificationService>();
         var now = _timeProvider.GetUtcNow().UtcDateTime.AddMinutes(_clockOffsetMinutes);
 
         var tickets = await db.Tickets.AsNoTracking()
@@ -93,13 +94,9 @@ public sealed class NotificationSchedulerService : BackgroundService
                 if (!due.HasValue || sent.Contains(due.Value))
                     continue;
 
-                await writer.TryWriteAsync(new NotificationLog
-                {
-                    UserId = ticket.UserId, TripId = ticket.TripId, Type = due.Value,
-                    Channel = NotificationChannel.InApp, Status = NotificationStatus.Sent,
-                    Message = NotificationMessages.Reminder(due.Value, stop.Stop.Name, eta.Value),
-                    CreatedAt = now, SentAt = now
-                }, cancellationToken);
+                await notifications.CreateAsync(ticket.UserId, ticket.TripId, due.Value,
+                    NotificationMessages.Reminder(due.Value, stop.Stop.Name, eta.Value),
+                    [NotificationChannel.InApp, NotificationChannel.Sms]);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {

@@ -3,6 +3,7 @@ using Hopon.Api.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Security.Cryptography;
+using Hopon.Api.Services.Sms;
 
 namespace Hopon.Api.Services;
 
@@ -14,15 +15,13 @@ public class OtpService : IOtpService
     private const int MaxVerifyAttempts = 5;
 
     private readonly HoponDbContext _db;
-    private readonly IHostEnvironment _env;
-    private readonly ILogger<OtpService> _logger;
+    private readonly ISmsSender _smsSender;
     private readonly OtpOptions _options;
 
-    public OtpService(HoponDbContext db, IHostEnvironment env, ILogger<OtpService> logger, IOptions<OtpOptions> options)
+    public OtpService(HoponDbContext db, ISmsSender smsSender, IOptions<OtpOptions> options)
     {
         _db = db;
-        _env = env;
-        _logger = logger;
+        _smsSender = smsSender;
         _options = options.Value;
     }
 
@@ -63,8 +62,16 @@ public class OtpService : IOtpService
         _db.OtpRequests.Add(otpRequest);
         await _db.SaveChangesAsync();
 
-        if (_env.IsDevelopment())
-            _logger.LogInformation("OTP for {PhoneNumber} : {Code}", phoneNumber, code);
+        var sent = await _smsSender.SendAsync(phoneNumber, $"Your Hopon code is {code}. It expires in 10 minutes.");
+        if (!sent.Success)
+        {
+            _db.OtpRequests.Remove(otpRequest);
+            // A failed delivery must not invalidate the passenger's previous working code.
+            foreach (var olderRequest in olderRequests)
+                olderRequest.IsUsed = false;
+            await _db.SaveChangesAsync();
+            return (false, "We couldn't send the SMS. Please try again.", null);
+        }
 
         var devOnlyCode = _options.ExposeCodeInResponse ? code : null;
 

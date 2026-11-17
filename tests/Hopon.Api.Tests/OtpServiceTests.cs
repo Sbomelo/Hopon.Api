@@ -2,9 +2,6 @@ using Hopon.Api.Data;
 using Hopon.Api.Models;
 using Hopon.Api.Services;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.FileProviders;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Xunit;
 
@@ -136,34 +133,48 @@ public class OtpServiceTests
     }
 
     [Theory]
-    [InlineData("Development", true)]
-    [InlineData("Development", false)]
-    [InlineData("Production", true)]
-    [InlineData("Production", false)]
-    [InlineData("Staging", true)]
-    [InlineData("Staging", false)]
-    public async Task Response_exposure_is_opt_in_and_logging_is_development_only(string environment, bool expose)
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Response_exposure_is_opt_in_and_code_is_sent_by_sms(bool expose)
     {
         await using var database = await TestDb.CreateAsync();
-        var logger = new CapturingLogger();
-        var service = await CreateServiceAsync(database.Context, environment, expose, logger);
-
+        database.Context.Users.Add(new User { PhoneNumber = Phone, FullName = "OTP test passenger" });
+        await database.Context.SaveChangesAsync();
+        var sender = new FakeSmsSender();
+        var service = new OtpService(database.Context, sender, Options.Create(new OtpOptions { ExposeCodeInResponse = expose }));
         var request = await service.RequestOtpAsync(Phone);
-
         Assert.True(request.Success);
         Assert.Equal(expose, request.DevOnlyCode is not null);
-        if (environment == "Development")
+        var sms = Assert.Single(sender.Messages);
+        Assert.Equal(Phone, sms.To);
+        Assert.Matches(@"^Your Hopon code is [0-9]{6}\. It expires in 10 minutes\.$", sms.Message);
+        var code = sms.Message.Split(' ')[4].TrimEnd('.');
+        Assert.True(BCrypt.Net.BCrypt.Verify(code, (await database.Context.OtpRequests.SingleAsync()).OtpCodeHash));
+        if (expose) Assert.Equal(code, request.DevOnlyCode);
+    }
+
+    [Fact]
+    public async Task Failed_delivery_deletes_request_preserves_previous_code_and_does_not_consume_rate_limit()
+    {
+        await using var database = await TestDb.CreateAsync();
+        database.Context.Users.Add(new User { PhoneNumber = Phone, FullName = "OTP test passenger" });
+        await database.Context.SaveChangesAsync();
+        var sender = new FakeSmsSender();
+        var service = new OtpService(database.Context, sender, Options.Create(new OtpOptions { ExposeCodeInResponse = true }));
+        var previous = await service.RequestOtpAsync(Phone);
+        sender.Result = new(false, "test failure", null);
+        for (var i = 0; i < 4; i++)
         {
-            var message = Assert.Single(logger.Messages);
-            var loggedCode = message.Split(" : ")[1];
-            Assert.Matches("^[0-9]{6}$", loggedCode);
-            Assert.True(BCrypt.Net.BCrypt.Verify(loggedCode, (await database.Context.OtpRequests.SingleAsync()).OtpCodeHash));
-            if (expose) Assert.Equal(loggedCode, request.DevOnlyCode);
+            var failed = await service.RequestOtpAsync(Phone);
+            Assert.False(failed.Success);
+            Assert.Equal("We couldn't send the SMS. Please try again.", failed.Error);
+            Assert.Null(failed.DevOnlyCode);
+            Assert.False((await database.Context.OtpRequests.SingleAsync()).IsUsed);
         }
-        else
-        {
-            Assert.Empty(logger.Messages);
-        }
+        Assert.True((await service.VerifyOtpAsync(Phone, previous.DevOnlyCode!)).Success);
+        sender.Result = new(true, null, "test-message");
+        Assert.True((await service.RequestOtpAsync(Phone)).Success);
+        Assert.Equal(2, await database.Context.OtpRequests.CountAsync());
     }
 
     [Fact]
@@ -175,29 +186,10 @@ public class OtpServiceTests
         CreatedAt = DateTime.UtcNow.AddMinutes(-2), ExpiresAt = DateTime.UtcNow.AddMinutes(8)
     };
 
-    private static async Task<OtpService> CreateServiceAsync(HoponDbContext db,
-        string environment = "Development", bool expose = true, CapturingLogger? logger = null)
+    private static async Task<OtpService> CreateServiceAsync(HoponDbContext db)
     {
         db.Users.Add(new User { PhoneNumber = Phone, FullName = "OTP test passenger" });
         await db.SaveChangesAsync();
-        return new OtpService(db, new TestEnvironment { EnvironmentName = environment },
-            logger ?? new CapturingLogger(), Options.Create(new OtpOptions { ExposeCodeInResponse = expose }));
-    }
-
-    private sealed class CapturingLogger : ILogger<OtpService>
-    {
-        public List<string> Messages { get; } = new();
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-        public bool IsEnabled(LogLevel logLevel) => true;
-        public void Log<TState>(LogLevel level, EventId id, TState state, Exception? exception,
-            Func<TState, Exception?, string> formatter) => Messages.Add(formatter(state, exception));
-    }
-
-    private sealed class TestEnvironment : IHostEnvironment
-    {
-        public string EnvironmentName { get; set; } = "Development";
-        public string ApplicationName { get; set; } = "Hopon.Api.Tests";
-        public string ContentRootPath { get; set; } = ".";
-        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
+        return new OtpService(db, new FakeSmsSender(), Options.Create(new OtpOptions { ExposeCodeInResponse = true }));
     }
 }
