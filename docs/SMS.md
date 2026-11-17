@@ -90,7 +90,8 @@ dotnet ef database update -- --environment Development
 
 It replaces the filtered `(UserId, TripId, Type)` unique index with
 `(UserId, TripId, Type, Channel)` for reminder/arrival types. Existing rows are
-preserved and existing migrations are unchanged. Delay and Emergency can repeat.
+preserved and existing migrations are unchanged. Delay can repeat. Task 7 adds a
+separate Emergency guard across channels; see `docs/EMERGENCY_ALERTS.md`.
 A downgrade to Task 5's index requires reconciling rows with both channels first;
 the Down migration deliberately does not delete notification history.
 
@@ -100,7 +101,9 @@ Notifications already created before enabling SMS are not backfilled. There is n
 outbox/crash recovery between claiming Pending and updating the result; an interrupted
 send can remain Pending. Per-ticket insert failure isolation remains in place.
 The demo clock offset controls due decisions only; log timestamps use actual injected UTC time.
-Emergency-contact delivery is Task 7 and is not implemented here.
+Emergency-contact arrival delivery is implemented in Task 7; see
+`docs/EMERGENCY_ALERTS.md` for its separate recipient, once-per-trip claim,
+completion fallback and truthful Pending/Failed/Sent feed messages.
 
 ## Verification
 

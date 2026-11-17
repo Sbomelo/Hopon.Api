@@ -8,6 +8,16 @@ Companion to `AGENTS.md` (read that first). This file is the **source of truth f
 
 Task 0 audit: **2026-11-16**, covering both repositories (`backend` = Hopon.Api; `frontend` = hopon-passenger). This handoff is copied into both repositories because the workspace-level `docs` directory is outside Git. API implementation is distinguished from usable UI below.
 
+**Task 7 — Emergency contact alert on arrival (2026-11-17)**
+- [x] Driver destination arrival sends the exact first-name/stop-name SMS through `INotificationService` / `ISmsSender` to the saved contact, who needs no Hopon account. Only active destination tickets qualify; missing contacts and legacy null destinations are skipped.
+- [x] Passenger-owned Emergency/Sms log names the contact without their number. Success says “We told Mom you arrived.” Failed sends/exceptions are Failed with null SentAt; disabled/excluded SMS remains Pending with “SMS disabled”. Logging is explicitly simulated and remains Pending rather than claiming real delivery.
+- [x] New migration `20261117124718_AddUniqueEmergencyAlerts` enforces one `(UserId, TripId, Type = Emergency)` across channels/statuses. Pending claims precede sending; repeated toggles, concurrent calls and completion cannot resend. One attempt total, no retries/backfill. Existing rows/migrations are preserved.
+- [x] Driver Completed flow checks the trip's highest-sequence stop for not-yet-alerted final-stop ticket holders, even without an Arrived event. It does not invent stop timestamps or alert missed intermediate destinations. Admin domain-flow consolidation remains Task 8.
+- [x] Passenger dashboard now includes a themed Emergency contact alerts feed, refreshed every 30 seconds, showing truthful Sent/Pending/Failed results. General notifications/unread UI remains Task 9. Added feed helper to authenticated-API logout coverage.
+- [x] Verification: backend build (zero errors), 321 backend tests including 14 emergency cases, frontend lint/build and four Node tests passed. Local SQL Server migration and pending-model check passed. Backend HTTP 5101 and Vite 5173 start successfully. Existing DriverController nullable and Vite chunk warnings remain on full compilation/build.
+- Verification limits: browser-control service timed out, so visual/360px dashboard checks remain unverified. Existing local passengers have no live trips; isolated HTTP tests cover OTP/map/SignalR and private feed access. No real SMS or paid provider calls were made.
+- Assumptions/limits: first whitespace-delimited name (fallback `Passenger` if blank); “Sent” means provider acceptance, not handset receipt. Disabled, simulated and failed claims suppress later attempts; a crash after claiming may leave Pending with unknown delivery. See `docs/EMERGENCY_ALERTS.md` for exact commands, messages, completion edge case and rollout duplicate preflight.
+
 **Task 6 — SMS abstraction and Twilio (2026-11-17)**
 - [x] `ISmsSender`/`SmsSendResult`, Logging default and official Twilio 8.2.0 sender. Twilio supports FromNumber or MessagingServiceSid (service takes precedence), a 10-second timeout, failure results and body-free error logs. Logging prints messages only in Development and redacts bodies elsewhere; SDK debug body logging is disabled.
 - [x] Typed SMS/Twilio/notification options validate provider, required Twilio credentials/sender and notification type names before database bootstrap. Notification SMS defaults off; its replacement type allowlist defaults to ThirtyMinutesBefore, TenMinutesBefore, Arrival, Delay and Emergency. OTP uses the selected provider independently of this switch.
@@ -103,18 +113,18 @@ Task 0 audit: **2026-11-16**, covering both repositories (`backend` = Hopon.Api;
 - [x] `src/pages/LoginPage.jsx`: OTP request and configured demo code display (`Otp:ExposeCodeInResponse`); code verification submits with Enter, but there is no visible Verify button.
 - [x] `DashboardPage.jsx`: live/past trip cards and active-trip map navigation. Past-trip cards are summaries, not a history detail page.
 - [x] `TripMapPage.jsx` + `src/components/TripMap.jsx`: MapLibre GL JS + OpenFreeMap, OSRM road route with straight-line fallback, location/status SignalR updates, follow-bus, basemap switcher and themes.
-- [x] `EmergencyContactPage.jsx`: contact read/save/delete only. Text promising arrival notifications is ahead of implementation.
+- [x] `EmergencyContactPage.jsx`: contact read/save/delete; Task 7 now sends destination-arrival SMS and shows the result in the dashboard emergency feed.
 - [x] `App.jsx`: switches only `map`, `dashboard`, `emergency-contact`; login/logout reset navigation to `map`.
 
 **Exists but not wired**
 - Resolved in Task 4: Admin Issue Ticket now loads passengers and trip stops on the normal Details GET and after validation errors.
-- Notifications, boarding/alighting and history APIs exist, but the passenger API helper and `App.jsx` do not expose their missing UI features below.
+- Boarding/alighting, history and the general notifications feed still need Task 9 UI. Task 7 exposes emergency arrival outcomes on the dashboard through the notification feed API.
 
 **Missing — checked with file globs and repository text searches**
 
 | Requested item | Status / evidence | Follow-up |
 |---|---|---|
-| NotificationsPage or equivalent feed | **Missing** from `src/pages`; no feed navigation or API helper | Task 9 |
+| General NotificationsPage / unread count | Task 7 adds an emergency-only dashboard feed and API helper; the general feed and unread UI are still missing | Task 9 |
 | TripHistory detail page | **Missing**; dashboard past-trip cards do not call `/history` | Task 9 |
 | BoardingPanel / boarding confirmation UI | **Missing** from `src/components` and pages; no board/alight calls | Task 9 |
 | `Pages/Admin/Simulator/Index.cshtml` and page model | **Missing**; broken `/Admin/Simulator/Index` link removed from `Pages/Shared/_Layout.cshtml` | Task 12 |
@@ -209,8 +219,9 @@ Each task = one branch + one PR. Acceptance criteria are what "done" means.
 - *Done when:* in Development nothing is sent but everything is logged; in Production OTP arrives by SMS.
 - [ ] Owner acceptance: configure Twilio using `docs/SMS.md` and confirm actual OTP receipt on a South African handset. No paid SMS was sent during implementation.
 
-**Task 7: Emergency contact alert on arrival**
-- When the driver marks the passenger's destination stop as Arrived: send an SMS to that passenger's emergency contact ("Thandi has arrived at Johannesburg Park Station"), log it. Only once per ticket.
+**Task 7: Emergency contact alert on arrival — complete**
+- [x] Exact privacy-limited SMS to saved contact on destination arrival; passenger-owned Emergency/Sms result log and dashboard feed. Unique user/trip/type claim prevents repeats; failed/disabled/simulated outcomes are truthful and are not retried.
+- [x] Driver completion fallback covers final-stop tickets without an arrival event; voided tickets are ignored. Migration, focused tests and verification are recorded in section A and `docs/EMERGENCY_ALERTS.md`.
 
 **Task 8: One domain path for trip status changes**
 - Admin "Mark delayed / Mark completed / Cancel" must go through `IDriverTripService`-style logic (or a shared `ITripStatusService`): set Actual times, notify passengers (cancel gets its own message), broadcast over SignalR. Add a simple allowed-transitions check. Notify on Cancelled.

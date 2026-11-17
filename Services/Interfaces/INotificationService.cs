@@ -9,6 +9,7 @@ namespace Hopon.Api.Services.Interfaces
         Task CreateAsync(int userId, int? tripId, NotificationType type, string message, NotificationChannel[] channels);
         Task NotifyTripDelayedAsync(Trip trip, string reason);
         Task NotifyStopArrivedAsync(TripStop stop);
+        Task NotifyTripCompletedAsync(Trip trip);
         Task<List<NotificationDto>> GetNotificationsForUserAsync(int userId);
     }
 }

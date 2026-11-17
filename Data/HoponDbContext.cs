@@ -207,6 +207,12 @@ public class HoponDbContext : DbContext
                 .IsUnique()
                 .HasFilter("[TripId] IS NOT NULL AND [Type] IN (0, 1, 2, 3, 4)");
 
+        // Emergency alerts claim one attempt across every channel and delivery status.
+        modelBuilder.Entity<NotificationLog>()
+                .HasIndex(nl => new { nl.UserId, nl.TripId, nl.Type })
+                .IsUnique()
+                .HasFilter("[TripId] IS NOT NULL AND [Type] = 6");
+
         
         //OtpRequest
         modelBuilder.Entity<OtpRequest>(entity =>

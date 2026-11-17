@@ -10,6 +10,6 @@ public sealed class LoggingSmsSender(IHostEnvironment environment, ILogger<Loggi
         // OTPs must never reach logs outside Development, even when Logging is selected.
         logger.LogInformation("SMS to {PhoneNumber} : {Message}", toE164,
             environment.IsDevelopment() ? message : "[message redacted outside Development]");
-        return Task.FromResult(new SmsSendResult(true, null, null));
+        return Task.FromResult(new SmsSendResult(true, null, null) { IsSimulated = true });
     }
 }

@@ -277,6 +277,10 @@ namespace Hopon.Api.Migrations
 
                     b.HasIndex("UserId", "SentAt");
 
+                    b.HasIndex("UserId", "TripId", "Type")
+                        .IsUnique()
+                        .HasFilter("[TripId] IS NOT NULL AND [Type] = 6");
+
                     b.HasIndex("UserId", "TripId", "Type", "Channel")
                         .IsUnique()
                         .HasFilter("[TripId] IS NOT NULL AND [Type] IN (0, 1, 2, 3, 4)");
