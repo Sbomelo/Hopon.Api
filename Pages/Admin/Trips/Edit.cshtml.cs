@@ -1,4 +1,5 @@
 using Hopon.Api.Extensions;
+using Hopon.Api.Services;
 using Hopon.Api.Models.Enums;
 using Hopon.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -50,8 +51,8 @@ namespace Hopon.Api.Pages.Admin.Trips
                 BusRouteId = trip.BusRouteId,
                 BusId = trip.BusId,
                 DriverId = trip.DriverId,
-                ScheduledDeparture = trip.ScheduledDeparture,
-                ScheduledArrival = trip.ScheduledArrival
+                ScheduledDeparture = SaTime.ToSa(trip.ScheduledDeparture),
+                ScheduledArrival = SaTime.ToSa(trip.ScheduledArrival)
             };
 
             await LoadOptionsAsync();
@@ -74,7 +75,7 @@ namespace Hopon.Api.Pages.Admin.Trips
             try
             {
                 var updated = await _tripService.UpdateTripAsync(Id, Input.BusRouteId, Input.BusId, 
-                                                Input.DriverId, Input.ScheduledDeparture, Input.ScheduledArrival);
+                                                Input.DriverId, SaTime.ToUtc(Input.ScheduledDeparture), SaTime.ToUtc(Input.ScheduledArrival));
 
                 if (!updated)
                     return NotFound();

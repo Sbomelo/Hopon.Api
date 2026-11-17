@@ -38,7 +38,7 @@
             <th>Route</th>
             <th>Bus</th>
             <th>Driver</th>
-            <th>Departure</th>
+            <th>Departure (SAST)</th>
             <th>Status</th>
             <th>Tickets</th>
             <th></th>
@@ -51,7 +51,7 @@
                 <td>@trip.RouteName</td>
                 <td>@trip.BusRegistration</td>
                 <td>@(trip.DriverName ?? "Unassigned")</td>
-                <td>@trip.ScheduledDeparture.ToString("dd MMM yyyy, HH:mm")</td>
+                <td>@SaTime.ToSa(trip.ScheduledDeparture).ToString("dd MMM yyyy, HH:mm")</td>
                 <td><span class="badge">@trip.Status</span></td>
                 <td>@trip.TicketsSold</td>
                 <td><a asp-page="./Details" asp-route-id="@trip.TripId">View</a></td>

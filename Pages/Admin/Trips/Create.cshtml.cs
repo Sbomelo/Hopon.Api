@@ -1,4 +1,5 @@
 using Hopon.Api.Extensions;
+using Hopon.Api.Services;
 using Hopon.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -64,7 +65,7 @@ namespace Hopon.Api.Pages.Admin.Trips
             {
                 var tripId = await _tripService.CreateTripAsync(
                                         Input.BusRouteId, Input.BusId, Input.DriverId,
-                                        Input.ScheduledDeparture, Input.ScheduledArrival);
+                                        SaTime.ToUtc(Input.ScheduledDeparture), SaTime.ToUtc(Input.ScheduledArrival));
 
                 return RedirectToPage("./Details", new { id = tripId });
 

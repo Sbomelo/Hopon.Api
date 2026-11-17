@@ -43,7 +43,7 @@ namespace Hopon.Api.Services
                     DestinationEstimatedArrival = ticket.DestinationTripStop is null ? null
                         : EtaCalculator.CalculateStopEta(trip, ticket.DestinationTripStop).EstimatedArrival,
                     RouteName = trip.BusRoute.Name,
-                    TripDate = trip.ScheduledDeparture.Date,
+                    TripDate = trip.ScheduledDeparture,
                     ScheduledDeparture = trip.ScheduledDeparture,
                     ScheduledArrival = trip.ScheduledArrival,
                     ActualDepature = trip.ActualDeparture,

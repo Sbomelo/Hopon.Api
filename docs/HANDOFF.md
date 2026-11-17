@@ -8,6 +8,14 @@ Companion to `AGENTS.md` (read that first). This file is the **source of truth f
 
 Task 0 audit: **2026-11-16**, covering both repositories (`backend` = Hopon.Api; `frontend` = hopon-passenger). This handoff is copied into both repositories because the workspace-level `docs` directory is outside Git. API implementation is distinguished from usable UI below.
 
+**Task 4b — UTC storage and SAST display (2026-11-17)**
+- [x] `SaTime` converts admin SAST wall-clock input to UTC with a fixed +02:00 offset and no OS timezone IDs; UTC inputs are unchanged. EF conventions preserve writes and mark required/nullable DateTimes UTC on read, preserving ticks and nulls.
+- [x] Admin Create/Edit save UTC and Edit pre-fills SAST. Admin Index/Details, ticket destination times, and driver schedule/stop/GPS displays use SAST; GPS is labelled SAST. Driver timestamps continue to use UTC.
+- [x] Passenger `src/utils/format.js` centralizes time/date formatting with `Africa/Johannesburg`, reused by Dashboard, TripMap and EmergencyContact. My-trips `tripDate` retains the departure instant so a 00:30 SAST departure does not display the previous date.
+- [x] No migration added or existing data shifted. The initial `dotnet ef migrations has-pending-model-changes --no-build -- --environment Development` reported no model changes. Manual, one-off correction for verified SAST-only schedule databases is in `docs/sql/shift-scheduled-times-to-utc.sql`; it is not idempotent and was **not run**. See `docs/UTC_TIME.md` for rollout and verification.
+- [x] Backend build succeeds (zero errors) and all 120 tests pass; six new cases cover SaTime round trips, the ten-minute ETA offset, nullable/required UTC materialization, Admin Create/Edit and driver rendering, API JSON `Z`, and midnight rollover. Frontend lint/build and four Node tests pass, including UTC/New York/Auckland device-zone checks. Existing DriverController nullable and Vite chunk warnings remain.
+- Local verification limit: after the initial EF check, Windows Application Control blocked `backend/bin/Debug/net8.0/Hopon.Api.dll` (`0x800711C7`) for direct startup and subsequent EF CLI checks. No policy was changed; local SQL Server migration/startup smoke checks could not be completed for Task 4b. The isolated HTTP tests use SQLite; legacy SQL schedules remain unchanged and require the documented correction when applicable.
+
 **Task 4 — Passenger stops on tickets and TripStop generation (2026-11-16)**
 - [x] Trip creation saves the trip and distance-proportional Pending stops atomically. First/last arrivals match the trip schedule; intermediate dwell is 15 minutes capped at the next arrival. Route edits regenerate stops only with no tickets (inactive tickets also block); schedule edits retain stop IDs and rescale only Pending stops.
 - [x] Nullable origin/destination ticket FKs use Restrict with no back navigation. New tickets require a destination after their boarding stop; omitted origin defaults to the first stop. Migration: `AddPassengerStopsToTickets`; apply with `dotnet ef database update -- --environment Development` from backend.
@@ -64,7 +72,7 @@ Task 0 audit: **2026-11-16**, covering both repositories (`backend` = Hopon.Api;
 - [x] Emergency-contact CRUD (`/api/emergency-contact`); no arrival-alert delivery.
 - [x] Driver API (`/api/driver/...`, Driver role): my-trip, start, delay, complete, location; login at `/api/driver/auth/login`.
 - [x] SignalR `/hubs/trip`, JWT query-string authentication, trip-group access checks; broadcasts `ReceiveLocationUpdate`, `ReceiveTripStatusUpdate`, `ReceiveStopUpdate`. Passenger hook subscribes to location/status only.
-- [x] Schedule-offset ETA in `Models/EtaCalculator.cs` (known timezone defect remains in section B).
+- [x] Schedule-offset ETA in `Models/EtaCalculator.cs`; Task 4b makes new admin schedules UTC to match driver actual times. Legacy SAST schedules require the documented one-off correction.
 - [x] Admin Razor trips list/filter, create, edit, details, cancel, mark delayed/completed. Ticket issuance includes seat/capacity/duplicate checks, `HOP-XXXXXX` references and validated passenger stops; Task 4 fixes the form's GET loading.
 - [x] Driver Razor `/Driver/Trip`: start, delay/resume, complete, stop arrive/depart, GPS from browser geolocation; uses the authenticated driver id and the DriverOnly cookie policy (Task 1).
 
@@ -121,7 +129,7 @@ Fix these as part of the tasks below (each is referenced there).
 14. Task 1 adds staff authentication, driver ownership and bootstrap tests. Broader coverage remains Task 13.
 15. Open edge case: `[RequireTripAccess]` requires an **active** ticket, so a voided/deactivated ticket blocks trip history. Decide: history should be allowed for any ticket the user owns (inactive included), tracking only for active tickets + active trip status.
 
-16. **Time zone inconsistency.** Admin forms (`datetime-local`) save South African local time into `ScheduledDeparture/Arrival` (Kind Unspecified), while the driver flow stamps `Actual*` with `DateTime.UtcNow`. `EtaCalculator` subtracts one from the other, so every delay/ETA is off by 2 hours. Dashboard DTO dates carry no `Z`; only `TripMapService` forces UTC (for location fixes).
+16. Resolved for new data in Task 4b: admin SAST input converts to UTC, EF DateTimes read as UTC (API `Z`), and staff/passenger displays use SAST. Existing SAST schedule values are not automatically shifted; `docs/sql/shift-scheduled-times-to-utc.sql` is a manual, one-off correction only for verified SAST-only schedule databases.
 17. Resolved in Task 4: `AdminTripService.CreateTripAsync` atomically saves TripStops generated from the route's stops. Legacy trips without stops are not backfilled.
 18. **Personal data in the repo.** Real-looking phone numbers (the owner's and family's) are committed in `DbContext` seed data and migrations, and the demo driver's password hash is committed. Fine for a private repo; must be sanitised before the repo is made public.
 
@@ -158,8 +166,8 @@ Each task = one branch + one PR. Acceptance criteria are what "done" means.
 - Move JWT key, connection string, Twilio keys to user-secrets / env vars; add `appsettings.Production.json` without secrets; CORS origins from config. Remove duplicate DI registration. Fail fast on startup if the JWT key is missing or shorter than 32 chars.
 
 ### Phase 2 — Missing product features
-**Task 4b: Time handling — UTC everywhere** *(do this right after Task 4 and before Task 5)*
-- Store all `DateTime` values as UTC. Convert South African local time (UTC+2, no DST) to UTC when admin forms save, and back to local when Razor pages display. Make EF return `DateTimeKind.Utc` so JSON serialises with `Z`. Frontend formats with `timeZone: 'Africa/Johannesburg'`.
+**Task 4b: Time handling — UTC everywhere — complete** *(local startup verification limited by Windows Application Control; see section A)*
+- [x] Store new schedules as UTC; convert SAST admin input before saving and UTC to SAST for Razor display/Edit. EF marks required/nullable dates UTC on read; frontend shares `Africa/Johannesburg` formatters. Legacy correction is documented separately and not executed.
 - *Done when:* a trip scheduled at 18:00 SAST departing 18:10 SAST shows a 10-minute delay everywhere, and ETAs are correct on the passenger dashboard.
 
 **Task 4: Passenger stop on tickets (model change) — complete** *(also: generate TripStops when a trip is created — defect 17)*
