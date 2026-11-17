@@ -72,7 +72,7 @@ builder.Services.AddScoped<ITripDashboardService, TripDashboardService>();
 builder.Services.AddScoped<IAdminTripService, AdminTripService>();
 builder.Services.AddScoped<IDriverAuthService, DriverAuthService>();
 builder.Services.AddScoped<IDriverTripAccessService, DriverTripAccessService>();
-builder.Services.AddScoped<IDriverTripService, DriverTripService>();
+builder.Services.AddScoped<ITripLifecycleService, TripLifecycleService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<PassengerNotificationWriter>();

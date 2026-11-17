@@ -8,5 +8,6 @@ public enum NotificationType
     TenMinutesBefore,
     Arrival,
     Delay,
-    Emergency
+    Emergency,
+    Cancellation
 }

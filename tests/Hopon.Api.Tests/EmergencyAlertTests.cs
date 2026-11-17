@@ -184,7 +184,7 @@ public class EmergencyAlertTests
         public TripStop First => Trip.TripStops.Single(s => s.SequenceOrder == 1);
         public TripStop Last => Trip.TripStops.Single(s => s.SequenceOrder == 2);
         public NotificationService Notifications => Service(Db);
-        public IDriverTripService Driver => new DriverTripService(Db, NullLogger<DriverTripService>.Instance,
+        public ITripLifecycleService Driver => new TripLifecycleService(Db, NullLogger<TripLifecycleService>.Instance,
             _services.GetRequiredService<Microsoft.AspNetCore.SignalR.IHubContext<Hopon.Api.Hubs.TripHub>>(), Notifications);
 
         private Fixture(TestDb database, NotificationOptions options)

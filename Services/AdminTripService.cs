@@ -168,20 +168,6 @@ namespace Hopon.Api.Services
             return true;
         }
 
-        public async Task<bool> UpdateTripStatusAsync(int tripId, TripStatus newStatus)
-        {
-            var trip = await _db.Trips.FirstOrDefaultAsync(t => t.Id == tripId);
-
-            if (trip is null)
-                return false;
-
-            trip.Status = newStatus;
-
-            await _db.SaveChangesAsync();
-            return true;
-
-        }
-
         public async Task<List<SelectOptionDto>> GetRouteOptionsAsync()
         {
             return await _db.BusRoutes

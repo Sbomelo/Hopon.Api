@@ -12,7 +12,7 @@ namespace Hopon.Api.Pages.Driver
     public class TripModel : PageModel
     {
         private readonly IDriverTripAccessService _accessService;
-        private readonly IDriverTripService _tripService;
+        private readonly ITripLifecycleService _tripService;
         private readonly HoponDbContext _db;
 
         private int DriverId => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : 0;
@@ -28,7 +28,7 @@ namespace Hopon.Api.Pages.Driver
 
         public TripModel(
             IDriverTripAccessService accessService,
-            IDriverTripService tripService,
+            ITripLifecycleService tripService,
             HoponDbContext db)
         {
             _accessService = accessService;

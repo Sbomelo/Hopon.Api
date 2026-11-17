@@ -1,5 +1,7 @@
 using Hopon.Api.Extensions;
 using Hopon.Api.Services;
+using Hopon.Api.Data;
+using Hopon.Api.Models;
 using Hopon.Api.Models.Enums;
 using Hopon.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -14,11 +16,19 @@ namespace Hopon.Api.Pages.Admin.Trips
     {
 
         private readonly IAdminTripService _tripService;
+        private readonly ITripLifecycleService _lifecycle;
+        private readonly HoponDbContext _db;
 
-        public EditModel(IAdminTripService tripService)
+        public EditModel(IAdminTripService tripService, ITripLifecycleService lifecycle, HoponDbContext db)
         {
             _tripService = tripService;
+            _lifecycle = lifecycle;
+            _db = db;
         }
+
+        [BindProperty] public string? DelayReason { get; set; }
+        [TempData] public string? LifecycleError { get; set; }
+        public TripStatus Status { get; set; }
 
         [BindProperty]
         public InputModel Input { get; set; } = new();
@@ -96,20 +106,34 @@ namespace Hopon.Api.Pages.Admin.Trips
             }
         }
 
-        public async Task<IActionResult> OnPostMarkDelayedAsync()
-        {
-            await _tripService.UpdateTripStatusAsync(Id, TripStatus.Delayed);
-            return RedirectToPage("./Details", new { id = Id });
-        }
+        public Task<IActionResult> OnPostMarkDelayedAsync()
+            => ChangeStatusAsync(trip => _lifecycle.ReportDelayedAsync(trip, DelayReason ?? string.Empty));
 
-        public async Task<IActionResult> OnPostMarkCompletedAsync()
+        public Task<IActionResult> OnPostResumeAsync()
+            => ChangeStatusAsync(_lifecycle.ResumeFromDelayAsync);
+
+        public Task<IActionResult> OnPostMarkCompletedAsync()
+            => ChangeStatusAsync(_lifecycle.CompletedAsync);
+
+        private async Task<IActionResult> ChangeStatusAsync(Func<Trip, Task<(bool Success, string? Error)>> action)
         {
-            await _tripService.UpdateTripStatusAsync(Id, TripStatus.Completed);
+            var trip = await _db.Trips.FindAsync(Id);
+            if (trip is null)
+                return NotFound();
+
+            var (success, error) = await action(trip);
+            if (!success)
+            {
+                LifecycleError = error;
+                return RedirectToPage(new { id = Id });
+            }
             return RedirectToPage("./Details", new { id = Id });
         }
 
         private async Task LoadOptionsAsync()
         {
+            var trip = await _db.Trips.FindAsync(Id);
+            if (trip != null) Status = trip.Status;
             RouteItems = (await _tripService.GetRouteOptionsAsync()).ToSelectListItems();
             BusItems = (await _tripService.GetBusOptionsAsync()).ToSelectListItems();
             DriverItems = (await _tripService.GetDriverOptionsAsync()).ToSelectListItems();

@@ -1,4 +1,4 @@
-﻿using Hopon.Api.DTOs.Drivers;
+using Hopon.Api.DTOs.Drivers;
 using Hopon.Api.Filters;
 using Hopon.Api.Models;
 using Hopon.Api.Services.Interfaces;
@@ -15,9 +15,9 @@ namespace Hopon.Api.Controllers
     public class DriverController : ControllerBase
     {
         private readonly IDriverTripAccessService _accessService;
-        private readonly IDriverTripService _tripService;
+        private readonly ITripLifecycleService _tripService;
 
-        public DriverController(IDriverTripAccessService accessService, IDriverTripService tripService)
+        public DriverController(IDriverTripAccessService accessService, ITripLifecycleService tripService)
         {
             _accessService = accessService;
             _tripService = tripService;
@@ -65,7 +65,7 @@ namespace Hopon.Api.Controllers
         public async Task<IActionResult> ReportDelay(int tripId, [FromBody] DelayedRequestDto dto)
         {
             var trip = (Trip)HttpContext.Items["DriverTrip"]!;
-            var (success, error) = await _tripService.ReportDelayedAsync(trip, dto.Reason);
+            var (success, error) = await _tripService.ReportDelayedAsync(trip, dto.Reason ?? string.Empty);
 
             return success ? Ok(new { message = "Delay reported.", status = trip.Status.ToString() })
                            : BadRequest(error);
