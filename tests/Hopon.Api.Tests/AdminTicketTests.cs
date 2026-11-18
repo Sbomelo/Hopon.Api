@@ -1,5 +1,8 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.WebSockets;
+using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Hopon.Api.Data;
 using Hopon.Api.Hubs;
@@ -135,6 +138,44 @@ public class AdminTicketTests
         await sessions.JoinAsync(2, 5, "two", () => Task.CompletedTask);
         await sessions.LeaveAsync("two");
         await sessions.RevokeAsync(2, 5, _ => throw new Exception("Disconnected connection was retained"));
+    }
+
+    [Fact]
+    public async Task Void_removes_an_open_websocket_from_the_trip_group_and_blocks_rejoining()
+    {
+        using var app = new StaffApplication();
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<HoponDbContext>();
+        var ticket = new Ticket { TripId = 101, UserId = 1, TicketReference = "VOID-SOCKET" };
+        db.Tickets.Add(ticket);
+        await db.SaveChangesAsync();
+        var token = scope.ServiceProvider.GetRequiredService<IJwtTokenService>().GenerateToken((await db.Users.FindAsync(1))!).Token;
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        using var socket = await app.Server.CreateWebSocketClient().ConnectAsync(new Uri("ws://localhost/hubs/trip?access_token=" + token), timeout.Token);
+        await Send(socket, "{\"protocol\":\"json\",\"version\":1}", timeout.Token);
+        await Receive(socket, timeout.Token);
+        await Send(socket, "{\"type\":1,\"invocationId\":\"1\",\"target\":\"JoinTrip\",\"arguments\":[101]}", timeout.Token);
+        Assert.False((await Receive(socket, timeout.Token)).TryGetProperty("error", out _));
+        var hub = scope.ServiceProvider.GetRequiredService<IHubContext<TripHub>>();
+        await hub.Clients.Group(TripHub.GroupName(101)).SendAsync("BeforeVoidProbe", timeout.Token);
+        Assert.Equal("BeforeVoidProbe", (await Receive(socket, timeout.Token)).GetProperty("target").GetString());
+        Assert.True((await scope.ServiceProvider.GetRequiredService<IAdminTicketService>().SetActiveAsync(101, ticket.Id, false)).Success);
+        await hub.Clients.Group(TripHub.GroupName(101)).SendAsync("ForbiddenProbe", timeout.Token);
+        await hub.Clients.All.SendAsync("AfterVoidProbe", timeout.Token);
+        Assert.Equal("AfterVoidProbe", (await Receive(socket, timeout.Token)).GetProperty("target").GetString());
+        await Send(socket, "{\"type\":1,\"invocationId\":\"2\",\"target\":\"JoinTrip\",\"arguments\":[101]}", timeout.Token);
+        Assert.Contains("do not have access", (await Receive(socket, timeout.Token)).GetProperty("error").GetString());
+    }
+
+    private static Task Send(WebSocket socket, string json, CancellationToken token) =>
+        socket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(json + "\u001e")), WebSocketMessageType.Text, true, token);
+
+    private static async Task<JsonElement> Receive(WebSocket socket, CancellationToken token)
+    {
+        var buffer = new byte[4096];
+        var received = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), token);
+        using var json = JsonDocument.Parse(Encoding.UTF8.GetString(buffer, 0, received.Count).TrimEnd('\u001e'));
+        return json.RootElement.Clone();
     }
 
     private static async Task<HttpResponseMessage> Post(HttpClient client, string url, string formPage, params (string Key, string Value)[] fields)

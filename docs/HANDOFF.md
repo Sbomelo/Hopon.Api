@@ -8,6 +8,17 @@ Companion to `AGENTS.md` (read that first). This file is the **source of truth f
 
 Task 0 audit: **2026-11-16**, covering both repositories (`backend` = Hopon.Api; `frontend` = hopon-passenger). This handoff is copied into both repositories because the workspace-level `docs` directory is outside Git. API implementation is distinguished from usable UI below.
 
+**Task 10 — Admin console completion (2026-11-18)**
+- [x] 10a: Admin home and post-login landing page; SAST-day trip/ticket counts and rolling 24-hour Sent/Failed notification-attempt counts.
+- [x] 10b: Admin-only live monitor with latest GPS/age/stale highlighting/OSM, next Pending stop, final schedule-offset ETA and Details links. A no-store JSON handler and `wwwroot/js/monitor.js` refresh the table every 15 seconds without navigation; failures retain the last snapshot and retry.
+- [x] 10c: Read-only notification log with combined trip/passenger/type/channel/status filters, stable newest-first paging at 50 rows, preserved filters and SAST timestamps.
+- [x] 10d: Scheduled-only Void/Reinstate ticket forms and service rules; reinstate checks passenger/capacity/seat and preserves the original reference. Active-ticket delivery/access checks remain in force; void also evicts existing SignalR trip-group connections, with serialized joins/revocations and disconnect cleanup.
+- [x] 10e: Validated Bus/Stop/Route CRUD, OSM point checks, confirmed destructive actions and friendly FK failures. Ordered route stops remain contiguous/unique through transactional swaps; any referenced trip locks reorder/remove, with the reason shown. Appends affect future trips only. Existing TripStop generation is verified and now coordinates with route edits transactionally.
+- [x] 10f: All new pages in the admin nav; responsive table containers and existing theme variables. Inline dark-mode brand/link visibility and separate-ticket-form validation fixes.
+- [x] Verification: backend rebuild zero warnings/errors; all **418 backend tests** passed (36 new cases, including an actual WebSocket revocation/rejoin check); frontend lint/build passed. Registration migration applied to local SQL Server after duplicate/length preflight; no pending model changes. Headless Edge verified 28 page/theme/viewport combinations plus timed monitor update/stale/error/empty/safe-text behavior without page navigation. Backend 5101 and Vite 5173 run.
+- Delivery: six ordered backend commits, split into an operations PR, a ticket PR and a master-data/navigation PR. Exact URLs, commands, assumptions and migration preflight are in backend `docs/ADMIN_CONSOLE.md`. One new migration: `20261118064058_AddUniqueBusRegistration`; old migrations unchanged. The index permits legacy empty registrations; new writes require a nonempty unique normalized registration.
+- Environment: Windows Application Control intermittently blocked startup/test assemblies. Normal rebuild/retry and the normal `dotnet` host restored execution; the final full suite passed. No policy settings changed. A browser connector timeout was handled with headless Edge. Browser polling checks used synthetic JSON rather than altering demo trips. Temporary QA admin is removed after review; no paid SMS was sent. Task 11/12 work remains untouched.
+
 **Task 9 — Passenger UI completion (2026-11-17; implementation complete, visual acceptance pending)**
 - [x] 9a: restore theme before React render through one theme helper; compact shared header with bell, theme and overflow controls. Map style/theme coupling is retained.
 - [x] 9b: newest-first notifications with type icons, relative/absolute SAST time, optional routes and loading/empty/error/retry states. Browser-local seen timestamp drives unread polling every 30 seconds on dashboard/map with cleanup.
@@ -256,9 +267,9 @@ Each task = one branch + one PR. Acceptance criteria are what "done" means.
 - Use the existing `DashboardPage` conventions. Verify on a 360px-wide viewport.
 - *Done when:* every passenger capability in AGENTS.md section 1 is reachable from the UI.
 
-**Task 10: Admin console completion**
-- Notification log page (filter by trip/user/type/status), vehicle last-known location per active trip, Bus/Route/Stop CRUD (Routes with ordered stops → generating TripStops on trip creation if not already done), Void ticket (set `IsActive=false`; allowed only before the trip starts), driver management (from Task 1).
-- Verify trip creation generates `TripStops` from `RouteStops` with scheduled times — if not, implement.
+**Task 10: Admin console completion — complete**
+- [x] Admin home/login landing, live monitor, filtered/paged notification log, Scheduled ticket Void/Reinstate, Bus/Stop/ordered Route CRUD and admin navigation.
+- [x] Trip creation generates TripStops; route-edit invariants and ticket revocation/reinstatement have service/HTTP/WebSocket coverage. All 418 backend tests, required build/lint, SQL migration/model checks and rendered admin checks passed. See section A and backend `docs/ADMIN_CONSOLE.md`.
 
 ### Phase 3 — Demo, privacy, quality, deploy
 **Task 11: Location throttling, audit, retention (POPIA)**
