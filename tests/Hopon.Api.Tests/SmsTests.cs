@@ -129,6 +129,7 @@ public class SmsTests
     {
         var services = new ServiceCollection();
         services.AddLogging();
+        services.AddSingleton<TimeProvider>(new FakeTimeProvider());
         services.AddSingleton<IHostEnvironment>(new TestEnvironment());
         var settings = new Dictionary<string, string?>();
         if (provider is not null)
