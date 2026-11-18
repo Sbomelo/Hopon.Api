@@ -4,6 +4,6 @@ namespace Hopon.Api.Services.Interfaces
 {
     public interface ITripMapService
     {
-        Task<TripMapDataDto?> GetMapDataAsync(int tripId);
+        Task<TripMapDataDto?> GetMapDataAsync(int tripId, int? destinationTripStopId = null);
     }
 }

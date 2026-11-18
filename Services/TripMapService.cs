@@ -1,5 +1,6 @@
 ﻿using Hopon.Api.Data;
 using Hopon.Api.DTOs.Trips;
+using Hopon.Api.Models;
 using Hopon.Api.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,7 +15,7 @@ namespace Hopon.Api.Services
             _db = db;
         }
 
-        public async Task<TripMapDataDto?> GetMapDataAsync(int tripId)
+        public async Task<TripMapDataDto?> GetMapDataAsync(int tripId, int? destinationTripStopId = null)
         {
             var trip = await _db.Trips
                         .Include(t => t.BusRoute)
@@ -25,6 +26,8 @@ namespace Hopon.Api.Services
 
             if (trip is null)
                 return null;
+
+            var destination = trip.TripStops.FirstOrDefault(stop => stop.Id == destinationTripStopId);
 
             //Last GPS the driver sent
             var lastLocation = await _db.LocationUpdates
@@ -38,6 +41,9 @@ namespace Hopon.Api.Services
                 TripId = trip.Id,
                 RouteName = trip.BusRoute.Name,
                 Status = trip.Status.ToString(),
+                DestinationStopName = destination?.Stop.Name,
+                DestinationEstimatedArrival = destination is null ? null
+                    : EtaCalculator.CalculateStopEta(trip, destination).EstimatedArrival,
                 Stops = trip.TripStops.Select(ts => new MapStopDto
                 {
                     SequenceOrder = ts.SequenceOrder,
