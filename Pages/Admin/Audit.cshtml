@@ -1,0 +1,26 @@
+@page
+@model Hopon.Api.Pages.Admin.AuditModel
+@using Hopon.Api.Models
+@{ Layout = "/Pages/Shared/_Layout.cshtml"; ViewData["Title"] = "Access audit"; }
+<h1>Access audit</h1>
+<p>Successful passenger reads and live tracking joins. Repeated actions are recorded once per five minutes. No IP addresses or device details are collected.</p>
+<form method="get" class="hopon-form">
+    <div asp-validation-summary="All" class="text-error"></div>
+    <label asp-for="UserId">User ID</label><input asp-for="UserId" type="number" min="1" />
+    <label asp-for="TripId">Trip ID</label><input asp-for="TripId" type="number" min="1" />
+    <label asp-for="ActionFilter">Action</label><select asp-for="ActionFilter" asp-items="Html.GetEnumSelectList<AccessAction>()"><option value="">All actions</option></select>
+    <p><button type="submit" class="btn-primary">Filter</button> <a asp-page="/Admin/Audit">Clear</a></p>
+</form>
+<p>Page @Model.PageNumber of @Model.TotalPages · 50 per page · SAST</p>
+<div class="staff-table"><table class="hopon-table">
+<thead><tr><th>Time (SAST)</th><th>User ID</th><th>Trip ID</th><th>Action</th></tr></thead>
+<tbody>
+@foreach (var row in Model.Items) {
+<tr><td>@SaTime.ToSa(row.CreatedAt).ToString("dd MMM yyyy HH:mm:ss")</td><td>@row.UserId</td><td>@(row.TripId?.ToString() ?? "—")</td><td>@row.Action</td></tr>
+}
+@if (Model.Items.Count == 0) { <tr><td colspan="4">No audit entries match these filters.</td></tr> }
+</tbody></table></div>
+<nav aria-label="Audit pages">
+@if (Model.PageNumber > 1) { <a asp-page="/Admin/Audit" asp-route-UserId="@Model.UserId" asp-route-TripId="@Model.TripId" asp-route-ActionFilter="@Model.ActionFilter" asp-route-PageNumber="@(Model.PageNumber - 1)">Previous</a> }
+@if (Model.PageNumber < Model.TotalPages) { <a asp-page="/Admin/Audit" asp-route-UserId="@Model.UserId" asp-route-TripId="@Model.TripId" asp-route-ActionFilter="@Model.ActionFilter" asp-route-PageNumber="@(Model.PageNumber + 1)">Next</a> }
+</nav>

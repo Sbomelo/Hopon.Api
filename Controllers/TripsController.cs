@@ -1,4 +1,4 @@
-﻿using Hopon.Api.DTOs;
+using Hopon.Api.DTOs;
 using Hopon.Api.DTOs.Trips;
 using Hopon.Api.Filters;
 using Hopon.Api.Models;
@@ -20,13 +20,15 @@ public class TripsController : ControllerBase
     private readonly IBoardingService _boardingService;
     private readonly ITripHistoryService _tripHistoryService;
     private readonly ITripMapService _tripMapService;
+    private readonly AccessAuditService _audit;
 
-    public TripsController(ITripDashboardService tripDashboardService, IBoardingService boardingService, ITripHistoryService tripHistoryService, ITripMapService tripMapService)
+    public TripsController(ITripDashboardService tripDashboardService, IBoardingService boardingService, ITripHistoryService tripHistoryService, ITripMapService tripMapService, AccessAuditService audit)
     {
         _tripDashboardService = tripDashboardService;
         _boardingService = boardingService;
         _tripHistoryService = tripHistoryService;
         _tripMapService = tripMapService;
+        _audit = audit;
     }
 
 
@@ -110,6 +112,7 @@ public class TripsController : ControllerBase
         if (history is null)
             return NotFound(new { message = "Trip history not found." });
 
+        await _audit.RecordAsync(userId, tripId, AccessAction.ViewedHistory);
         return Ok(history);
     }
 
@@ -125,6 +128,7 @@ public class TripsController : ControllerBase
                 message = "Map Data not found"
             });
 
+        await _audit.RecordAsync(int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!), tripId, AccessAction.ViewedMap);
         return Ok(mapData);
 
     }

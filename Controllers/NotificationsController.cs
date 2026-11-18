@@ -1,4 +1,6 @@
-﻿using Hopon.Api.Services.Interfaces;
+using Hopon.Api.Services.Interfaces;
+using Hopon.Api.Services;
+using Hopon.Api.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -12,10 +14,12 @@ namespace Hopon.Api.Controllers
     public class NotificationsController : ControllerBase
     {
         private readonly INotificationService _notificationService;
+        private readonly AccessAuditService _audit;
 
-        public NotificationsController(INotificationService notificationService)
+        public NotificationsController(INotificationService notificationService, AccessAuditService audit)
         {
             _notificationService = notificationService;
+            _audit = audit;
         }
 
         [HttpGet("my")]
@@ -27,6 +31,7 @@ namespace Hopon.Api.Controllers
                 return Unauthorized();
 
             var notifications = await _notificationService.GetNotificationsForUserAsync(userId);
+            await _audit.RecordAsync(userId, null, AccessAction.ViewedNotifications);
             return Ok(notifications);
         }
     }

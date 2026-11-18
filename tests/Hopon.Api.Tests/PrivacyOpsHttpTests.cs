@@ -29,4 +29,26 @@ public class PrivacyOpsHttpTests
         Assert.Single(await db.LocationUpdates.ToListAsync());
     }
 
+    [Fact]
+    public async Task Passenger_reads_are_audited_only_after_access_is_granted()
+    {
+        using var app = new StaffApplication();
+        using var client = app.NewClient();
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<HoponDbContext>();
+        db.Tickets.Add(new Ticket { UserId = 1, TripId = 101, TicketReference = "AUDIT" });
+        await db.SaveChangesAsync();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer",
+            scope.ServiceProvider.GetRequiredService<IJwtTokenService>().GenerateToken((await db.Users.FindAsync(1))!).Token);
+        foreach (var endpoint in new[] { "/api/trips/101/map-data", "/api/trips/101/history", "/api/notifications/my" })
+            for (var i = 0; i < 2; i++) Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(endpoint)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/trips/102/map-data")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/trips/102/history")).StatusCode);
+        var logs = await db.AccessAuditLogs.ToListAsync();
+        Assert.Equal(3, logs.Count);
+        Assert.All(logs, x => Assert.Equal(1, x.UserId));
+        Assert.DoesNotContain(logs, x => x.TripId == 102);
+        Assert.Contains(logs, x => x.Action == AccessAction.ViewedNotifications && x.TripId == null);
+    }
+
 }
