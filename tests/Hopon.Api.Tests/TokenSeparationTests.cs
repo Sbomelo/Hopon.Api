@@ -2,15 +2,19 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Net.WebSockets;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using Hopon.Api.Data;
 using Hopon.Api.Models;
 using Hopon.Api.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Connections;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Xunit;
 
@@ -18,6 +22,9 @@ namespace Hopon.Api.Tests;
 
 public class TokenSeparationTests
 {
+    private static readonly DateTime FutureExpiry = new(2099, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+    private static readonly DateTime PastExpiry = new(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
     [Fact]
     public async Task Overlapping_ids_do_not_allow_driver_and_passenger_impersonation()
     {
@@ -57,35 +64,50 @@ public class TokenSeparationTests
     {
         using var app = new StaffApplication();
         using var client = app.NewClient();
+        var (passenger, _) = await app.CreatePassengerAsync("+27600000101");
+        var (otherPassenger, otherToken) = await app.CreatePassengerAsync("+27600000102");
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<HoponDbContext>();
-        var passenger = new User { Id = 101, FullName = "Test passenger", PhoneNumber = "+27780000101" };
-        db.Users.Add(passenger);
-        db.Tickets.Add(new Ticket { UserId = 101, TripId = 101, TicketReference = "TEST-PASSENGER" });
+        db.Tickets.AddRange(
+            new Ticket { UserId = passenger.Id, TripId = 101, TicketReference = "TEST-PASSENGER-A" },
+            new Ticket { UserId = otherPassenger.Id, TripId = 102, TicketReference = "TEST-PASSENGER-B" });
         await db.SaveChangesAsync();
 
         var requested = await client.PostAsJsonAsync("/api/auth/otp/request", new { passenger.PhoneNumber });
         Assert.Equal(HttpStatusCode.OK, requested.StatusCode);
-        var otp = await requested.Content.ReadFromJsonAsync<JsonElement>();
-        var verified = await client.PostAsJsonAsync("/api/auth/otp/verify", new { passenger.PhoneNumber, Code = otp.GetProperty("devOnlyCode").GetString() });
+        var sms = Assert.Single(app.Sms.Messages);
+        Assert.Equal(passenger.PhoneNumber, sms.To);
+        var code = sms.Message.Split(' ')[4].TrimEnd('.');
+        var verified = await client.PostAsJsonAsync("/api/auth/otp/verify", new { passenger.PhoneNumber, Code = code });
         Assert.Equal(HttpStatusCode.OK, verified.StatusCode);
         var result = await verified.Content.ReadFromJsonAsync<JsonElement>();
         var token = result.GetProperty("token").GetString()!;
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/trips/my-trips")).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/trips/101/map-data")).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/trips/102/map-data")).StatusCode);
+        using var otherClient = app.NewClient();
+        otherClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", otherToken);
+        foreach (var endpoint in new[] { "access-check", "map-data", "history" })
+        {
+            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/trips/101/{endpoint}")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await otherClient.GetAsync($"/api/trips/102/{endpoint}")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/trips/102/{endpoint}")).StatusCode);
+        }
 
+        await using var hub = new HubConnectionBuilder().WithUrl("http://localhost/hubs/trip", options =>
+        {
+            options.Transports = HttpTransportType.WebSockets;
+            options.SkipNegotiation = true;
+            options.WebSocketFactory = async (context, ct) =>
+            {
+                var uri = new UriBuilder(context.Uri) { Query = "access_token=" + Uri.EscapeDataString(token) };
+                return await app.Server.CreateWebSocketClient().ConnectAsync(uri.Uri, ct);
+            };
+        }).Build();
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        using var socket = await app.Server.CreateWebSocketClient().ConnectAsync(new Uri("ws://localhost/hubs/trip?access_token=" + token), timeout.Token);
-        await Send(socket, "{\"protocol\":\"json\",\"version\":1}", timeout.Token);
-        Assert.Equal("{}", (await Receive(socket, timeout.Token)).GetRawText());
-        await Send(socket, "{\"type\":1,\"invocationId\":\"1\",\"target\":\"JoinTrip\",\"arguments\":[101]}", timeout.Token);
-        var joined = await Receive(socket, timeout.Token);
-        Assert.Equal(3, joined.GetProperty("type").GetInt32());
-        Assert.False(joined.TryGetProperty("error", out _));
-        await Send(socket, "{\"type\":1,\"invocationId\":\"2\",\"target\":\"JoinTrip\",\"arguments\":[102]}", timeout.Token);
-        Assert.Contains("You do not have access", (await Receive(socket, timeout.Token)).GetProperty("error").GetString());
+        await hub.StartAsync(timeout.Token);
+        await hub.InvokeAsync("JoinTrip", 101, timeout.Token);
+        var denied = await Assert.ThrowsAsync<HubException>(() => hub.InvokeAsync("JoinTrip", 102, timeout.Token));
+        Assert.Contains("You do not have access", denied.Message);
     }
 
     [Theory]
@@ -110,24 +132,27 @@ public class TokenSeparationTests
         var token = CreateToken(app, "Passenger");
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/trips/my-trips?access_token=" + token)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsync("/hubs/trip/negotiate?negotiateVersion=1&access_token=" + token, null)).StatusCode);
-        var driverToken = CreateToken(app, "Driver");
+        var (_, driverToken) = await app.CreateDriverAsync("driver-query-test");
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/hubs/trip?access_token=" + driverToken)).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsync("/hubs/trip/negotiate?negotiateVersion=1&access_token=" + driverToken, null)).StatusCode);
     }
 
     [Theory]
-    [InlineData(-30, false, HttpStatusCode.OK)]
-    [InlineData(-120, false, HttpStatusCode.Unauthorized)]
-    [InlineData(3600, true, HttpStatusCode.Unauthorized)]
-    public async Task Signature_and_one_minute_expiry_tolerance_are_enforced(int expirySeconds, bool wrongKey, HttpStatusCode expected)
+    [InlineData(false, false, HttpStatusCode.OK)]
+    [InlineData(true, false, HttpStatusCode.Unauthorized)]
+    [InlineData(false, true, HttpStatusCode.Unauthorized)]
+    public async Task Signature_and_expiry_are_enforced(bool expired, bool wrongKey, HttpStatusCode expected)
     {
         using var app = new StaffApplication();
         using var client = app.NewClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateToken(app, "Passenger", expirySeconds, wrongKey));
+        var options = app.Services.GetRequiredService<IOptionsMonitor<JwtBearerOptions>>().Get(JwtBearerDefaults.AuthenticationScheme);
+        Assert.Equal(TimeSpan.FromMinutes(1), options.TokenValidationParameters.ClockSkew);
+        var expiry = expired ? PastExpiry : FutureExpiry;
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateToken(app, "Passenger", expiry, wrongKey));
         Assert.Equal(expected, (await client.GetAsync("/api/trips/my-trips")).StatusCode);
     }
 
-    private static string CreateToken(StaffApplication app, string? role, int expirySeconds = 3600, bool wrongKey = false)
+    private static string CreateToken(StaffApplication app, string? role, DateTime? expiry = null, bool wrongKey = false)
     {
         var config = app.Services.GetRequiredService<IConfiguration>().GetSection("Jwt");
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "1") };
@@ -135,18 +160,7 @@ public class TokenSeparationTests
         var key = wrongKey ? "Different-test-only-key-at-least-32-characters" : config["Key"]!;
         return new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(
             issuer: config["Issuer"], audience: config["Audience"], claims: claims,
-            expires: DateTime.UtcNow.AddSeconds(expirySeconds),
+            expires: expiry ?? FutureExpiry,
             signingCredentials: new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)), SecurityAlgorithms.HmacSha256)));
-    }
-
-    private static Task Send(WebSocket socket, string json, CancellationToken token) =>
-        socket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(json + "\u001e")), WebSocketMessageType.Text, true, token);
-
-    private static async Task<JsonElement> Receive(WebSocket socket, CancellationToken token)
-    {
-        var buffer = new byte[4096];
-        var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), token);
-        using var json = JsonDocument.Parse(Encoding.UTF8.GetString(buffer, 0, result.Count).TrimEnd('\u001e'));
-        return json.RootElement.Clone();
     }
 }

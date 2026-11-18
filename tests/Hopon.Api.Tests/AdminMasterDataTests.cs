@@ -66,7 +66,8 @@ public class AdminMasterDataTests
         var bus = new Bus { RegistrationNumber = "USED", Capacity = 10 };
         db.AddRange(route, bus);
         await db.SaveChangesAsync();
-        var tripId = await new AdminTripService(db).CreateTripAsync(route.Id, bus.Id, null, DateTime.UtcNow, DateTime.UtcNow.AddHours(1));
+        var departure = HoponWebApplicationFactory.TestNow.UtcDateTime;
+        var tripId = await new AdminTripService(db).CreateTripAsync(route.Id, bus.Id, null, departure, departure.AddHours(1));
         var trip = (await db.Trips.FindAsync(tripId))!;
         trip.Status = status;
         await db.SaveChangesAsync();

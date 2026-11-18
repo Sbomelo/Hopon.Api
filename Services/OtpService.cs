@@ -17,12 +17,14 @@ public class OtpService : IOtpService
     private readonly HoponDbContext _db;
     private readonly ISmsSender _smsSender;
     private readonly OtpOptions _options;
+    private readonly TimeProvider _clock;
 
-    public OtpService(HoponDbContext db, ISmsSender smsSender, IOptions<OtpOptions> options)
+    public OtpService(HoponDbContext db, ISmsSender smsSender, IOptions<OtpOptions> options, TimeProvider clock)
     {
         _db = db;
         _smsSender = smsSender;
         _options = options.Value;
+        _clock = clock;
     }
 
     public async Task<(bool Success, string? Error, string? DevOnlyCode)> RequestOtpAsync(string phoneNumber)
@@ -32,7 +34,7 @@ public class OtpService : IOtpService
         if (!userExists)
             return (false, "Unable to process this request.", null);
 
-        var now = DateTime.UtcNow;
+        var now = _clock.GetUtcNow().UtcDateTime;
         var windowStart = now - RateLimitWindow;
         var recentRequestCount = await _db.OtpRequests
             .CountAsync(o => o.PhoneNumber == phoneNumber && o.CreatedAt >= windowStart);
@@ -91,7 +93,7 @@ public class OtpService : IOtpService
         if (otpRequest is null)
             return (false, "No active OTP request found. Please request an OTP code.");
 
-        if (otpRequest.ExpiresAt <= DateTime.UtcNow)
+        if (otpRequest.ExpiresAt <= _clock.GetUtcNow().UtcDateTime)
             return (false, "This code has expired. Please request a new one.");
 
         if (otpRequest.AttemptCount >= MaxVerifyAttempts)

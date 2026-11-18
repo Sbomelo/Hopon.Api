@@ -11,12 +11,14 @@ public sealed class TwilioSmsSender : ISmsSender
     private readonly ITwilioRestClient _client;
     private readonly TwilioOptions _options;
     private readonly ILogger<TwilioSmsSender> _logger;
+    private readonly TimeProvider _clock;
 
-    public TwilioSmsSender(ITwilioRestClient client, IOptions<TwilioOptions> options, ILogger<TwilioSmsSender> logger)
+    public TwilioSmsSender(ITwilioRestClient client, IOptions<TwilioOptions> options, ILogger<TwilioSmsSender> logger, TimeProvider clock)
     {
         _client = client;
         _options = options.Value;
         _logger = logger;
+        _clock = clock;
     }
 
     public async Task<SmsSendResult> SendAsync(string toE164, string message, CancellationToken ct = default)
@@ -31,7 +33,7 @@ public sealed class TwilioSmsSender : ISmsSender
                 request.From = new PhoneNumber(_options.FromNumber);
 
             var response = await MessageResource.CreateAsync(request, client: _client)
-                .WaitAsync(TimeSpan.FromSeconds(10), ct);
+                .WaitAsync(TimeSpan.FromSeconds(10), _clock, ct);
             if (response.ErrorCode.HasValue || response.Status == MessageResource.StatusEnum.Failed
                 || response.Status == MessageResource.StatusEnum.Undelivered)
             {

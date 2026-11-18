@@ -73,7 +73,7 @@ public class NotificationSchedulerTests
             token = tokens.GenerateToken((await db.Users.FindAsync(1))!).Token;
             otherToken = tokens.GenerateToken((await db.Users.FindAsync(2))!).Token;
         }
-        var scheduler = app.Services.GetServices<IHostedService>().OfType<NotificationSchedulerService>().Single();
+        using var scheduler = ActivatorUtilities.CreateInstance<NotificationSchedulerService>(app.Services);
         await scheduler.RunOnceAsync();
         await scheduler.RunOnceAsync();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);

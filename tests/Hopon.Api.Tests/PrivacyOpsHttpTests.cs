@@ -61,9 +61,10 @@ public class PrivacyOpsHttpTests
         await Post(client, "/Staff/Login", "/Staff/Login", ("Input.Role", "Admin"), ("Input.Username", "admin-test"), ("Input.Password", StaffApplication.Password));
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<HoponDbContext>();
+        var now = app.Clock.GetUtcNow().UtcDateTime;
         db.AccessAuditLogs.AddRange(Enumerable.Range(0, 55).Select(i => new AccessAuditLog { UserId = 1, TripId = 101,
-            Action = AccessAction.ViewedMap, CreatedAt = DateTime.UtcNow.AddSeconds(-i) }));
-        db.AccessAuditLogs.Add(new AccessAuditLog { UserId = 2, TripId = 102, Action = AccessAction.ViewedHistory, CreatedAt = DateTime.UtcNow });
+            Action = AccessAction.ViewedMap, CreatedAt = now.AddSeconds(-i) }));
+        db.AccessAuditLogs.Add(new AccessAuditLog { UserId = 2, TripId = 102, Action = AccessAction.ViewedHistory, CreatedAt = now });
         await db.SaveChangesAsync();
         var html = await client.GetStringAsync("/Admin/Audit?UserId=1&TripId=101&ActionFilter=ViewedMap&PageNumber=2");
         Assert.Contains("Page 2 of 2", html);

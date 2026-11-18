@@ -29,7 +29,7 @@ public class PassengerUiTests
         var ticket = new Ticket { UserId = 1, TripId = 101, TicketReference = "VOID-HISTORY", IsActive = false, SeatNumber = "8" };
         db.Tickets.Add(ticket);
         await db.SaveChangesAsync();
-        db.BoardingLogs.Add(new BoardingLog { TicketId = ticket.Id, EventType = BoardingEventType.Boarded, Timestamp = DateTime.UtcNow.AddHours(-1) });
+        db.BoardingLogs.Add(new BoardingLog { TicketId = ticket.Id, EventType = BoardingEventType.Boarded, Timestamp = app.Clock.GetUtcNow().UtcDateTime.AddHours(-1) });
         await db.SaveChangesAsync();
         var tokens = scope.ServiceProvider.GetRequiredService<IJwtTokenService>();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokens.GenerateToken((await db.Users.FindAsync(1))!).Token);

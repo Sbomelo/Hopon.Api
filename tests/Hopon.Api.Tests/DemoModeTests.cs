@@ -122,7 +122,7 @@ public class DemoModeTests
     {
         await using var store = await TestDb.CreateAsync();
         var db = store.Context;
-        var seed = new DemoSeeder(db, TimeProvider.System);
+        var seed = new DemoSeeder(db, new FakeTimeProvider(Now));
         await seed.SeedAsync();
         var past = await db.Trips.SingleAsync(t => t.Status == TripStatus.Completed);
         db.Tickets.Add(new Ticket { Trip = past, UserId = 1, TicketReference = "KEEP" });
@@ -148,7 +148,7 @@ public class DemoModeTests
     public async Task Simulator_uses_latest_broadcast_fix_throttle_and_lifecycle_transitions()
     {
         using var staff = new StaffApplication();
-        var clock = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        var clock = new FakeTimeProvider(Now);
         using var app = staff.WithWebHostBuilder(b => b.ConfigureServices(s => s.AddSingleton<TimeProvider>(clock)));
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<HoponDbContext>();
