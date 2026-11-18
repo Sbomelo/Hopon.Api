@@ -30,11 +30,12 @@ namespace Hopon.Api.Services
             var destination = trip.TripStops.FirstOrDefault(stop => stop.Id == destinationTripStopId);
 
             //Last GPS the driver sent
-            var lastLocation = await _db.LocationUpdates
+            var fixes = await _db.LocationUpdates
                         .Where(lu => lu.TripId == tripId)
                         .OrderByDescending(lu => lu.RecordedAt)
-                        .AsNoTracking()
-                        .FirstOrDefaultAsync();
+                        .ThenByDescending(lu => lu.Id).Take(10)
+                        .Select(lu => new MapLocationDto { Latitude = lu.Latitude, Longitude = lu.Longitude, RecordedAt = lu.RecordedAt })
+                        .ToListAsync();
 
             return new TripMapDataDto
             {
@@ -53,12 +54,10 @@ namespace Hopon.Api.Services
                     Status = ts.Status.ToString()
                 }).ToList(),
 
-                LastKnownLocation = lastLocation is null ? null : new MapLocationDto
-                {
-                    Latitude = lastLocation.Latitude,
-                    Longitude = lastLocation.Longitude,
-                    RecordedAt = lastLocation.RecordedAt
-                }
+                RoadCoordinates = DemoRoad.Matches(trip.BusRoute.Name, trip.TripStops.Select(s => s.Stop.Name))
+                    ? DemoRoad.N3.Coordinates : null,
+                LastKnownLocation = fixes.FirstOrDefault(),
+                RecentLocations = fixes.AsEnumerable().Reverse().ToList()
             };
         }
     }

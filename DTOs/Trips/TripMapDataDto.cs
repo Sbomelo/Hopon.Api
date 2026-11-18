@@ -11,6 +11,8 @@ namespace Hopon.Api.DTOs.Trips
         public DateTime? DestinationEstimatedArrival { get; set; }
         public List<MapStopDto> Stops { get; set; } = new();
         public MapLocationDto? LastKnownLocation { get; set; }
+        public List<MapLocationDto> RecentLocations { get; set; } = [];
+        public double[][]? RoadCoordinates { get; set; }
     }
 
     public class MapStopDto 
