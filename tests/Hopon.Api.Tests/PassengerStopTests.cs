@@ -244,7 +244,7 @@ public class PassengerStopTests
         var admin = await service.GetTripDetailAsync(id);
         Assert.Equal("Middle", admin!.Tickets.Single(t => t.TicketReference != "LEGACY").DestinationStopName);
         Assert.Null(admin.Tickets.Single(t => t.TicketReference == "LEGACY").DestinationStopName);
-        var page = new DetailsModel(service, null!, database.Context);
+        var page = new DetailsModel(service, null!, null!);
         Assert.IsType<PageResult>(await page.OnGetAsync(id));
         Assert.NotEmpty(page.PassengerItems);
         Assert.Equal(3, page.TripStopItems.Count);
