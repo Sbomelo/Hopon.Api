@@ -114,7 +114,7 @@ public class PrivacyOpsTests
     public async Task Audit_database_failure_is_swallowed()
     {
         using var provider = new ServiceCollection().BuildServiceProvider();
-        await new AccessAuditService(provider.GetRequiredService<IServiceScopeFactory>(), TimeProvider.System,
+        await new AccessAuditService(provider.GetRequiredService<IServiceScopeFactory>(), new FakeTimeProvider(),
             NullLogger<AccessAuditService>.Instance).RecordAsync(1, null, AccessAction.ViewedNotifications);
     }
 

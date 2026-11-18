@@ -1,4 +1,6 @@
 # Hopon
+
+[![Backend CI](https://github.com/Sbomelo/Hopon.Api/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Sbomelo/Hopon.Api/actions/workflows/ci.yml)
  
  Real-time trip notifications and bus tracking for intercity bus passengers in South Africa.
  
@@ -56,6 +58,12 @@ This project serves two purposes:
 **Why the frontend is split:**
 - The passenger app is the public-facing, mobile-first showpiece of Hopon — React handles live updates, map interactions, and a smooth mobile experience naturally. 
 - The admin and driver tools are internal desktop interfaces where Razor Pages is faster to build and easier to maintain.
+
+## Testing
+
+From this repository root with the .NET 8 SDK, run `dotnet test`. The xUnit suite uses SQLite in memory and simulated SMS delivery.
+
+Run the driver browser-script tests with Node.js 22 using `node --test tests/Hopon.Api.Tests/driver-location.test.cjs`.
 
 ## Run the demo
 

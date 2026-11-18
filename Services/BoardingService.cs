@@ -7,18 +7,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Hopon.Api.Services
 {
-    public class BoardingService: IBoardingService
+    public class BoardingService(HoponDbContext db, TimeProvider clock) : IBoardingService
     {
-        private readonly HoponDbContext _db;
-
-        public BoardingService(HoponDbContext db)
-        {
-            _db = db;
-        }
-
         public async Task<BoardingStatusDto> GetStatusAsync(int ticketId, int tripId)
         {
-            var logs = await _db.BoardingLogs
+            var logs = await db.BoardingLogs
                                 .Where(bl => bl.TicketId == ticketId)
                                 .AsNoTracking()
                                 .ToListAsync();
@@ -31,7 +24,7 @@ namespace Hopon.Api.Services
             if (tripStatus == TripStatus.Cancelled)
                 return (false, "This trip has been canceled.", null);
 
-            var logs = await _db.BoardingLogs
+            var logs = await db.BoardingLogs
                                 .Where(bl => bl.TicketId == ticketId)
                                 .AsNoTracking()
                                 .ToListAsync();
@@ -43,11 +36,11 @@ namespace Hopon.Api.Services
             {
                 TicketId = ticketId,
                 EventType = BoardingEventType.Boarded,
-                Timestamp = DateTime.UtcNow
+                Timestamp = clock.GetUtcNow().UtcDateTime
             };
 
-            _db.BoardingLogs.Add(log);
-            await _db.SaveChangesAsync();
+            db.BoardingLogs.Add(log);
+            await db.SaveChangesAsync();
 
             logs.Add(log);
             return (true, null, BuildStatus(tripId, logs));
@@ -58,7 +51,7 @@ namespace Hopon.Api.Services
             if (tripStatus == TripStatus.Cancelled)
                 return (false, "This trip has been cancelled", null);
 
-            var logs = await _db.BoardingLogs
+            var logs = await db.BoardingLogs
                                 .Where(bl => bl.TicketId == ticketId)
                                 .AsNoTracking()
                                 .ToListAsync();
@@ -73,11 +66,11 @@ namespace Hopon.Api.Services
             {
                 TicketId = ticketId,
                 EventType = BoardingEventType.Alighted,
-                Timestamp = DateTime.UtcNow
+                Timestamp = clock.GetUtcNow().UtcDateTime
             };
 
-            _db.BoardingLogs.Add(log);
-            await _db.SaveChangesAsync();
+            db.BoardingLogs.Add(log);
+            await db.SaveChangesAsync();
 
             logs.Add(log);
             return (true, null, BuildStatus(tripId, logs));

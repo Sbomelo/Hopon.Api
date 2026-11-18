@@ -77,7 +77,7 @@ public class SmsTests
         var db = scope.ServiceProvider.GetRequiredService<Hopon.Api.Data.HoponDbContext>();
         var sender = new FakeSmsSender();
         var service = new NotificationService(db, new PassengerNotificationWriter(db, NullLogger<PassengerNotificationWriter>.Instance),
-            TimeProvider.System, sender, Options.Create(new NotificationOptions { SmsEnabled = true }));
+            new FakeTimeProvider(), sender, Options.Create(new NotificationOptions { SmsEnabled = true }));
         for (var i = 0; i < 2; i++)
         {
             await service.CreateAsync(1, 101, NotificationType.TenMinutesBefore, "Reminder", [NotificationChannel.InApp, NotificationChannel.Sms]);

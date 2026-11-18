@@ -16,14 +16,16 @@ namespace Hopon.Api.Services
         private readonly ILogger<TripLifecycleService> _logger;
         private readonly IHubContext<TripHub> _hubContext;
         private readonly INotificationService _notificationService;
+        private readonly TimeProvider _clock;
 
-        public TripLifecycleService(HoponDbContext db, ILogger<TripLifecycleService> logger, IHubContext<TripHub> hubContext, INotificationService notificationService, ILocationThrottle locationThrottle)
+        public TripLifecycleService(HoponDbContext db, ILogger<TripLifecycleService> logger, IHubContext<TripHub> hubContext, INotificationService notificationService, ILocationThrottle locationThrottle, TimeProvider clock)
         {
             _db = db;
             _locationThrottle = locationThrottle;
             _logger = logger;
             _hubContext = hubContext;
             _notificationService = notificationService;
+            _clock = clock;
         }
 
 
@@ -34,7 +36,7 @@ namespace Hopon.Api.Services
                 return (false, $"Cannot start a trip that is {trip.Status}. Start requires Scheduled; use Resume for a delayed trip.");
 
             trip.Status = TripStatus.InProgress;
-            trip.ActualDeparture = DateTime.UtcNow;
+            trip.ActualDeparture = _clock.GetUtcNow().UtcDateTime;
             await _db.SaveChangesAsync();
 
             await BroadcastStatusAsync(trip, reason: null);
@@ -77,7 +79,7 @@ namespace Hopon.Api.Services
                 return InvalidTransition(trip, TripStatus.Completed);
 
             trip.Status = TripStatus.Completed;
-            trip.ActualArrival = DateTime.UtcNow;
+            trip.ActualArrival = _clock.GetUtcNow().UtcDateTime;
 
             await _db.SaveChangesAsync();
 
@@ -134,7 +136,7 @@ namespace Hopon.Api.Services
                 return (false, $"Stop is already {ts.Status}.");
 
             ts.Status = TripStopStatus.Arrived;
-            ts.ActualArrival = DateTime.UtcNow;
+            ts.ActualArrival = _clock.GetUtcNow().UtcDateTime;
             await _db.SaveChangesAsync();
 
             await _notificationService.NotifyStopArrivedAsync(ts);
@@ -162,7 +164,7 @@ namespace Hopon.Api.Services
                 return (false, "Mark the stop as Arrived before departing.");
 
             ts.Status = TripStopStatus.Departed;
-            ts.ActualDeparture = DateTime.UtcNow;
+            ts.ActualDeparture = _clock.GetUtcNow().UtcDateTime;
             await _db.SaveChangesAsync();
 
             await _hubContext.Clients.Group(TripHub.GroupName(ts.TripId))

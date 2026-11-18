@@ -31,7 +31,7 @@ npm run lint
 npm run build
 ```
 
-The existing xUnit project is already in `Hopon.Api.slnx` and references the API. `TestDb` keeps an in-memory SQLite connection open for each service test; disposing the helper destroys that test database. HTTP tests reuse the existing `StaffApplication` factory. Tests cover normalization, stored hashes, invalidation, expiry, attempts, request limits, inactive users, response configuration, environment-specific logging and emergency-contact validation/storage. The Task 2 OTP → map-data → SignalR test still exercises the authenticated trip flow, now with a valid synthetic mobile number.
+The xUnit project is in `Hopon.Api.sln` and references the API. `TestDb` keeps an in-memory SQLite connection open for each service test. HTTP tests use `HoponWebApplicationFactory` with the `StaffApplication` fixture. Tests cover normalization, stored hashes, invalidation, expiry, attempts, request limits, inactive users, response configuration, environment-specific logging and emergency-contact validation and storage. The OTP → map-data → SignalR test uses a synthetic mobile number and reads the OTP from the recording SMS sender.
 
 ## Local acceptance check
 
