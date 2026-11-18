@@ -103,7 +103,7 @@ namespace Hopon.Api.Services
         private static (bool Success, string? Error) InvalidTransition(Trip trip, TripStatus target)
             => (false, $"Cannot change trip status from {trip.Status} to {target}.");
 
-        public async Task<LocationRecordResult> RecordLocationAsync(Trip trip, double latitude, double longitude)
+        public async Task<LocationRecordResult> RecordLocationAsync(Trip trip, double latitude, double longitude, bool simulatorJump = false)
         {
             if (!TripStatusRules.IsTrackingActive(trip.Status))
                 return new(LocationOutcome.Rejected, $"Cannot record location for a trip that is {trip.Status}");
@@ -120,7 +120,7 @@ namespace Hopon.Api.Services
                 fix => _hubContext.Clients.Group(TripHub.GroupName(trip.Id)).SendAsync("ReceiveLocationUpdate", new LocationBroadCastDto
                 {
                     TripId = trip.Id, Latitude = fix.Latitude, Longitude = fix.Longitude, RecordedAt = fix.RecordedAt
-                }));
+                }), simulatorJump);
         }
 
         public async Task<(bool Success, string? Error)> MarkStopArrivedAsync(Trip trip, int tripStopId)

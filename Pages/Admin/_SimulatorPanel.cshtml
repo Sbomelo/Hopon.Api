@@ -1,0 +1,41 @@
+@using Hopon.Api.Models.Enums
+@using Hopon.Api.Services
+@model Hopon.Api.Pages.Admin.SimulatorModel
+@{
+    var trip = Model.Trip!;
+    var running = trip.Status == TripStatus.InProgress;
+    var canMove = running && trip.NextStop != null && !trip.AtStop;
+}
+<section class="sim-state" aria-label="Selected trip" data-auto="@(canMove && trip.HasRoad ? "yes" : "no")">
+    <h2>Trip #@trip.Id <span class="badge">@trip.Status</span></h2>
+    <dl class="sim-facts">
+        <div><dt>Current position</dt><dd>@(trip.Position is {} p ? $"{p.Latitude:F5}, {p.Longitude:F5}" : "Waiting for GPS")</dd></div>
+        <div><dt>@(trip.AtStop ? "At stop" : "Next stop")</dt><dd>@(trip.NextStop ?? "All stops served")</dd></div>
+    </dl>
+    <form method="post" asp-page="/Admin/Simulator" asp-page-handler="Action" class="hopon-form">
+        <input type="hidden" name="tripId" value="@trip.Id" />
+        <div class="sim-actions">
+            <button class="btn-primary" name="command" value="move" disabled="@(!canMove || !trip.HasRoad)">Move bus +10 km</button>
+            <button class="btn-secondary" name="command" value="jump" disabled="@(!canMove)">Jump to next stop</button>
+            <button class="btn-secondary" name="command" value="depart" disabled="@(!running || !trip.AtStop)">Depart stop</button>
+        </div>
+        @if (!trip.HasRoad) { <p>Road movement is available for the five-stop Durban to Johannesburg route.</p> }
+        <label for="reason">Delay reason</label>
+        <input name="reason" id="reason" maxlength="200" disabled="@(!running)" />
+        <div class="sim-actions">
+            <button class="btn-secondary" name="command" value="delay" disabled="@(!running)">Trigger delay</button>
+            <button class="btn-secondary" name="command" value="resume" disabled="@(trip.Status != TripStatus.Delayed)">Resume</button>
+            <button class="btn-secondary" name="command" value="start" disabled="@(trip.Status != TripStatus.Scheduled)">Start trip</button>
+            <button class="btn-secondary" name="command" value="complete" disabled="@(!TripStatusRules.CanTransition(trip.Status, TripStatus.Completed))">Complete trip</button>
+        </div>
+        @if (Model.Feedback != null) { <p class="text-error" role="alert">@Model.Feedback</p> }
+    </form>
+    <h3>Last 10 events</h3>
+    @if (trip.Events.Count == 0) { <p>No events yet.</p> }
+    <ol class="sim-events">
+        @foreach (var item in trip.Events)
+        {
+            <li><time>@SaTime.ToSa(item.At).ToString("HH:mm:ss") SAST</time> @item.Message</li>
+        }
+    </ol>
+</section>
