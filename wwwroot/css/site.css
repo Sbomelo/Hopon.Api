@@ -237,3 +237,14 @@ td.text-error { font-weight: 700; }
 td { overflow-wrap: anywhere; }
 #trip-monitor { min-width: 900px; }
 #trip-monitor td:nth-child(4), #trip-monitor td:last-child { white-space: nowrap; }
+
+.simulator-picker { max-width: 38rem; }
+.simulator-picker button, .sim-auto { display: inline-block; margin: .75rem 0; }
+.sim-state { margin-top: 1rem; padding: 1rem; border: 1px solid var(--color-border); background: var(--color-surface); }
+.sim-state h2 { margin-top: 0; }
+.sim-facts, .sim-actions { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; margin: 1rem 0; }
+.sim-facts dt { font-size: .85rem; }
+.sim-facts dd { margin: .25rem 0; font-weight: 600; }
+.sim-state button:disabled { opacity: .5; cursor: default; }
+.sim-events { padding-left: 1.5rem; }
+.sim-events time { font-variant-numeric: tabular-nums; margin-right: .5rem; }

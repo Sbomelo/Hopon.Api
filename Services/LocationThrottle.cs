@@ -12,8 +12,11 @@ public sealed class LocationThrottle(TimeProvider clock) : ILocationThrottle
     // Striped locks bound lock memory and serialize validation/persistence per trip.
     private readonly SemaphoreSlim[] _gates = Enumerable.Range(0, 64).Select(_ => new SemaphoreSlim(1)).ToArray();
 
+    public LocationUpdate? Latest(int tripId) => _previous.GetValueOrDefault(tripId);
+
     public async Task<LocationRecordResult> RecordAsync(int tripId, double latitude, double longitude,
-        Func<Task<LocationUpdate?>> loadPrevious, Func<LocationUpdate, Task> persistFix, Func<LocationUpdate, Task> broadcast)
+        Func<Task<LocationUpdate?>> loadPrevious, Func<LocationUpdate, Task> persistFix, Func<LocationUpdate, Task> broadcast,
+        bool simulatorJump = false)
     {
         if (!double.IsFinite(latitude) || !double.IsFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180)
             return new(LocationOutcome.Rejected, "Please provide valid GPS coordinates.");
@@ -34,7 +37,8 @@ public sealed class LocationThrottle(TimeProvider clock) : ILocationThrottle
                         return new(LocationOutcome.Throttled, "Location shared recently. Please wait a few seconds.");
                 }
             }
-            if (previous != null)
+            // A deliberate admin fast-forward compresses journey time. Rate and write limits still apply.
+            if (previous != null && !simulatorJump)
             {
                 var hours = (now - previous.RecordedAt).TotalHours;
                 if (hours <= 0 || DistanceKm(previous.Latitude, previous.Longitude, latitude, longitude) / hours > 250)

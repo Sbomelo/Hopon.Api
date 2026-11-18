@@ -9,7 +9,7 @@ namespace Hopon.Api.Services.Interfaces
         Task<(bool Success, string? Error)> ResumeFromDelayAsync(Trip trip);
         Task<(bool Success, string? Error)> CompletedAsync(Trip trip);
         Task<(bool Success, string? Error)> CancelAsync(Trip trip, string? reason);
-        Task<LocationRecordResult> RecordLocationAsync(Trip trip, double latitude, double longitude);
+        Task<LocationRecordResult> RecordLocationAsync(Trip trip, double latitude, double longitude, bool simulatorJump = false);
         Task<(bool Success, string? Error)> MarkStopArrivedAsync(Trip trip, int tripStopId);
         Task<(bool Success, string? Error)> MarkStopDepartedAsync(Trip trip, int tripStopId);
 

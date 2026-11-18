@@ -13,7 +13,9 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Options;
 
-var builder = WebApplication.CreateBuilder(args);
+var resetDemo = args.Contains("--reset-demo");
+var seedDemo = resetDemo || args.Contains("--seed-demo");
+var builder = WebApplication.CreateBuilder(args.Where(a => a != "--seed-demo" && a != "--reset-demo").ToArray());
 
 builder.Services.AddOptions<JwtOptions>().BindConfiguration("Jwt")
     .ValidateDataAnnotations().ValidateOnStart();
@@ -58,6 +60,9 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AllowAnonymousToPage("/Staff/Denied");
 });
 builder.Services.AddScoped<StaffSeeder>();
+builder.Services.AddScoped<DemoSeeder>();
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<SimulatorService>();
 builder.Services.AddScoped<AdminDriverService>();
 builder.Services.AddScoped<StaffCookieEvents>();
 builder.Services.AddSignalR();
@@ -184,6 +189,12 @@ app.Services.GetRequiredService<IStartupValidator>().Validate();
 
 using (var scope = app.Services.CreateScope())
 {
+    if (seedDemo || (app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("Demo:SeedOnStartup")))
+    {
+        await scope.ServiceProvider.GetRequiredService<DemoSeeder>().SeedAsync(resetDemo);
+        app.Logger.LogInformation("Hopon demo data is ready.");
+        if (seedDemo) return;
+    }
     await scope.ServiceProvider.GetRequiredService<StaffSeeder>().SeedAsync();
 }
 
