@@ -1,0 +1,20 @@
+@page
+@model Hopon.Api.Pages.Admin.Routes.IndexModel
+@{ ViewData["Title"] = "Routes"; }
+<h1>Routes</h1>
+@if (Model.Error is not null) { <p class="text-error" role="alert">@Model.Error</p> }
+<div asp-validation-summary="All" class="text-error"></div>
+<p><a class="btn-primary" asp-page="./Edit">Add route</a></p>
+<div class="staff-table"><table class="hopon-table">
+    <thead><tr><th>Name</th><th>Ordered stops</th><th>Used by trips</th><th>Actions</th></tr></thead>
+    <tbody>
+    @foreach (var route in Model.Routes)
+    {
+        <tr><td>@route.Name</td><td>@string.Join(" → ", route.Stops.Select(s => s.Name))</td><td>@(route.UsedByTrips ? "Yes" : "No")</td><td>
+            <a class="btn-secondary" asp-page="./Edit" asp-route-id="@route.Id">Edit / stops</a>
+            <form method="post" asp-page-handler="Delete" asp-route-id="@route.Id" class="admin-inline" onsubmit="return confirm('Delete this route and its ordered stops?');"><button class="btn-danger" type="submit">Delete</button></form>
+        </td></tr>
+    }
+    @if (Model.Routes.Count == 0) { <tr><td colspan="4">No routes yet.</td></tr> }
+    </tbody>
+</table></div>

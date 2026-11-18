@@ -111,6 +111,7 @@ namespace Hopon.Api.Services
 
         public async Task<int> CreateTripAsync(int busRouteId, int busId, int? driverId, DateTime scheduledDeparture, DateTime scheduledArrival)
         {
+            await using var transaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
             var stops = await GetRouteStopsAsync(busRouteId);
             var trip = new Trip
             {
@@ -125,7 +126,7 @@ namespace Hopon.Api.Services
 
             _db.Trips.Add(trip);
             await _db.SaveChangesAsync();
-
+            await transaction.CommitAsync();
             return trip.Id;
         }
 

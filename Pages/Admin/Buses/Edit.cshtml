@@ -1,0 +1,11 @@
+@page "{id:int?}"
+@model Hopon.Api.Pages.Admin.Buses.EditModel
+@{ ViewData["Title"] = RouteData.Values["id"] is null ? "Add bus" : "Edit bus"; }
+<h1>@ViewData["Title"]</h1>
+<form method="post" class="hopon-form staff-form">
+    <div asp-validation-summary="All" class="text-error"></div>
+    <label asp-for="Input.RegistrationNumber">Registration</label><input asp-for="Input.RegistrationNumber" />
+    <label asp-for="Input.Model">Model</label><input asp-for="Input.Model" />
+    <label asp-for="Input.Capacity">Capacity</label><input asp-for="Input.Capacity" type="number" min="1" />
+    <p><button type="submit" class="btn-primary">Save bus</button> <a class="btn-secondary" asp-page="./Index">Back</a></p>
+</form>

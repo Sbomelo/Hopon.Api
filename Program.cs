@@ -74,6 +74,7 @@ builder.Services.AddScoped<IAdminConsoleService, AdminConsoleService>();
 builder.Services.AddScoped<IAdminTicketService, AdminTicketService>();
 builder.Services.AddScoped<IAdminTripActionsService, AdminTripActionsService>();
 builder.Services.AddSingleton<TripTrackingSessions>();
+builder.Services.AddScoped<IAdminMasterDataService, AdminMasterDataService>();
 builder.Services.AddScoped<IDriverAuthService, DriverAuthService>();
 builder.Services.AddScoped<IDriverTripAccessService, DriverTripAccessService>();
 builder.Services.AddScoped<ITripLifecycleService, TripLifecycleService>();

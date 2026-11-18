@@ -65,6 +65,9 @@ public class HoponDbContext : DbContext
         });
 
 
+        modelBuilder.Entity<Bus>().HasIndex(b => b.RegistrationNumber).IsUnique()
+                .HasFilter("[RegistrationNumber] <> ''");
+
         //Route Stop
         modelBuilder.Entity<RouteStop>()
                 .HasOne( rs => rs.BusRoute)

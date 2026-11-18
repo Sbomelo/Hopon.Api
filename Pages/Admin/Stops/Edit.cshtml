@@ -1,0 +1,12 @@
+@page "{id:int?}"
+@model Hopon.Api.Pages.Admin.Stops.EditModel
+@{ ViewData["Title"] = RouteData.Values["id"] is null ? "Add stop" : "Edit stop"; }
+<h1>@ViewData["Title"]</h1>
+<form method="post" class="hopon-form staff-form">
+    <div asp-validation-summary="All" class="text-error"></div>
+    <label asp-for="Input.Name">Name</label><input asp-for="Input.Name" />
+    <label asp-for="Input.Latitude">Latitude</label><input asp-for="Input.Latitude" type="number" step="any" min="-90" max="90" />
+    <label asp-for="Input.Longitude">Longitude</label><input asp-for="Input.Longitude" type="number" step="any" min="-180" max="180" />
+    <p><button type="submit" class="btn-primary">Save stop</button> <a class="btn-secondary" asp-page="./Index">Back</a></p>
+</form>
+@if (Model.LocationUrl is not null) { <p><a href="@Model.LocationUrl" target="_blank" rel="noopener noreferrer">Check saved point on OpenStreetMap</a></p> }

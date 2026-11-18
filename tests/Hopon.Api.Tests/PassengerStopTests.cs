@@ -271,7 +271,7 @@ public class PassengerStopTests
             new() { SequenceOrder = 20, Stop = new Stop { Name = "Middle", Latitude = 0, Longitude = 1 } },
             new() { SequenceOrder = 30, Stop = new Stop { Name = "Last", Latitude = 0, Longitude = 3 } }
         } };
-        var bus = new Bus { RegistrationNumber = "TEST", Capacity = 50 };
+        var bus = new Bus { RegistrationNumber = "TEST-" + Guid.NewGuid().ToString("N"), Capacity = 50 };
         database.Context.AddRange(route, bus);
         await database.Context.SaveChangesAsync();
         return (route, bus);
