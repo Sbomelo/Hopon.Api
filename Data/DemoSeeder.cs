@@ -39,9 +39,8 @@ public sealed class DemoSeeder(HoponDbContext db, TimeProvider clock)
 
         var bus = await db.Buses.SingleOrDefaultAsync(b => b.RegistrationNumber == Registration)
             ?? new Bus { RegistrationNumber = Registration, Capacity = 60, Model = "Demo intercity coach" };
-        var route = await db.BusRoutes.Include(r => r.RouteStops).ThenInclude(rs => rs.Stop)
-            .SingleOrDefaultAsync(r => r.Name == DemoRoad.RouteName) ?? new BusRoute { Name = DemoRoad.RouteName };
-        var stops = await GetRouteStopsAsync(route);
+        var route = await GetDemoRouteAsync();
+        var stops = route.RouteStops.OrderBy(rs => rs.SequenceOrder).Select(rs => rs.Stop).ToList();
         if (bus.Id == 0) db.Buses.Add(bus);
         if (route.Id == 0) db.BusRoutes.Add(route);
         await db.SaveChangesAsync();
@@ -107,23 +106,25 @@ public sealed class DemoSeeder(HoponDbContext db, TimeProvider clock)
         await transaction.CommitAsync();
     }
 
-    private async Task<List<Stop>> GetRouteStopsAsync(BusRoute route)
+    private async Task<BusRoute> GetDemoRouteAsync()
     {
-        var assigned = route.RouteStops.OrderBy(rs => rs.SequenceOrder).ToList();
-        var expected = DemoRoad.Stops;
-        if (!assigned.Select(s => s.Stop.Name).SequenceEqual(expected.Take(assigned.Count).Select(s => s.Name)))
-            throw new InvalidOperationException("An existing route with the demo name has a different stop order.");
-        var stops = new List<Stop>();
-        for (var i = 0; i < expected.Length; i++)
+        var candidates = await db.BusRoutes.Where(r => r.Name == DemoRoad.RouteName)
+            .OrderBy(r => r.Id)
+            .Include(r => r.RouteStops).ThenInclude(rs => rs.Stop)
+            .ToListAsync();
+        var matching = candidates.FirstOrDefault(r => DemoRoad.Matches(r.Name,
+            r.RouteStops.OrderBy(rs => rs.SequenceOrder).Select(rs => rs.Stop.Name)));
+        if (matching is not null) return matching;
+
+        var route = new BusRoute { Name = DemoRoad.RouteName };
+        for (var i = 0; i < DemoRoad.Stops.Length; i++)
         {
-            if (i < assigned.Count) { stops.Add(assigned[i].Stop); continue; }
-            var (name, point, _, _) = expected[i];
-            var stop = await db.Stops.SingleOrDefaultAsync(s => s.Name == name)
+            var (name, point, _, _) = DemoRoad.Stops[i];
+            var stop = await db.Stops.Where(s => s.Name == name).OrderBy(s => s.Id).FirstOrDefaultAsync()
                 ?? new Stop { Name = name, Latitude = point.Latitude, Longitude = point.Longitude };
             route.RouteStops.Add(new RouteStop { Stop = stop, SequenceOrder = i + 1 });
-            stops.Add(stop);
         }
-        return stops;
+        return route;
     }
 
     private static List<TripStop> AddTripStops(Trip trip, List<Stop> stops, bool history)
