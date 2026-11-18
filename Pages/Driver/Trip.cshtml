@@ -77,6 +77,10 @@ else
     @if (t.Status is "InProgress" or "Delayed")
     {
         <form method="post" asp-page-handler="PostLocation" id="gps-form" style="margin-bottom: 1rem;">
+            <input type="hidden" name="LocationTripId" value="@t.TripId" />
+            <label><input type="checkbox" id="gps-auto" /> Share automatically every 10 seconds</label>
+            <p id="gps-indicator" hidden>Auto-sharing location</p>
+            <button type="button" id="gps-stop" hidden class="btn-secondary">Stop sharing</button>
             <input type="hidden" name="Latitude" id="lat-input" />
             <input type="hidden" name="Longitude" id="lng-input" />
             <button type="button" id="gps-btn" class="btn-primary" style="width: 100%; font-size: 1rem; padding: 0.9rem;">
@@ -236,38 +240,5 @@ else
 }
 
 @section Scripts {
-    <script>
-        (function() {
-            var btn = document.getElementById('gps-btn');
-            var form = document.getElementById('gps-form');
-            var status = document.getElementById('gps-status');
-
-            if (!btn) return;
-
-            btn.addEventListener('click', function() {
-                if (!navigator.geolocation) {
-                    status.textContent = 'Geolocation is not supported by this browser.';
-                    return;
-                }
-                btn.textContent = 'Getting location…';
-                btn.disabled = true;
-                status.textContent = 'Waiting for GPS signal…';
-
-                navigator.geolocation.getCurrentPosition(
-                    function(pos) {
-                        document.getElementById('lat-input').value = pos.coords.latitude;
-                        document.getElementById('lng-input').value = pos.coords.longitude;
-                        status.textContent = 'Got location — submitting…';
-                        form.submit();
-                    },
-                    function(err) {
-                        status.textContent = 'Could not get location: ' + err.message;
-                        btn.textContent = '📍 Post My Location';
-                        btn.disabled = false;
-                    },
-                    { enableHighAccuracy: true, timeout: 10000 }
-                );
-            });
-        })();
-    </script>
+    <script src="~/js/driver-location.js" asp-append-version="true"></script>
 }
