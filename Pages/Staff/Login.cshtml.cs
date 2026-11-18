@@ -63,6 +63,6 @@ public class LoginModel(HoponDbContext db, IDriverAuthService driverAuth) : Page
             new Claim(ClaimTypes.Role, Input.Role)
         }, StaffCookieEvents.Scheme);
         await HttpContext.SignInAsync(StaffCookieEvents.Scheme, new ClaimsPrincipal(identity));
-        return RedirectToPage(Input.Role == "Admin" ? "/Admin/Trips/Index" : "/Driver/Trip");
+        return RedirectToPage(Input.Role == "Admin" ? "/Admin/Index" : "/Driver/Trip");
     }
 }

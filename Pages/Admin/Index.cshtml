@@ -1,0 +1,18 @@
+@page
+@model Hopon.Api.Pages.Admin.IndexModel
+@{
+    ViewData["Title"] = "Admin home";
+}
+<h1>Hopon admin</h1>
+<p>Today uses South African time (SAST). Notification counts cover attempts created in the last 24 hours.</p>
+<table class="hopon-table">
+    <tbody>
+        <tr><th>Trips in progress</th><td>@Model.Counts.InProgress</td></tr>
+        <tr><th>Delayed trips</th><td>@Model.Counts.Delayed</td></tr>
+        <tr><th>Scheduled today</th><td>@Model.Counts.ScheduledToday</td></tr>
+        <tr><th>Tickets sold today (including subsequently voided)</th><td>@Model.Counts.TicketsSoldToday</td></tr>
+        <tr><th>Notifications sent (24 h)</th><td>@Model.Counts.NotificationsSent</td></tr>
+        <tr><th>Notifications failed (24 h)</th><td>@Model.Counts.NotificationsFailed</td></tr>
+    </tbody>
+</table>
+<p><a class="btn-secondary" asp-page="/Admin/Trips/Index">Manage trips and tickets</a> <a class="btn-secondary" asp-page="/Admin/Drivers/Index">Manage drivers</a></p>
