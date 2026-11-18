@@ -6,4 +6,6 @@ public interface IAdminConsoleService
 {
     Task<AdminHomeDto> GetHomeAsync();
     Task<List<AdminMonitorDto>> GetMonitorAsync();
+    Task<AdminNotificationLogDto> GetNotificationsAsync(NotificationLogFilter filter);
+    Task<List<SelectOptionDto>> GetNotificationTripOptionsAsync();
 }
