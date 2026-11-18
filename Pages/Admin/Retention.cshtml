@@ -1,0 +1,19 @@
+@page
+@model Hopon.Api.Pages.Admin.RetentionModel
+@{ Layout = "/Pages/Shared/_Layout.cshtml"; ViewData["Title"] = "Data retention"; }
+<h1>Data retention</h1>
+@if (Model.Message != null) { <p role="status">@Model.Message</p> }
+<p>Enabled: @Model.Settings.Enabled · Dry run: @Model.Settings.DryRun</p>
+<p>Daily at 02:00 SAST while Hopon is running. Trip records: @Model.Settings.DaysAfterTrip days after arrival. Locations: @Model.Settings.LocationDays days. OTP requests: 2 days.</p>
+<p>Tickets and trips stay as business records. Eligible passenger names and numbers are anonymised and emergency contacts removed. Active and future trips protect passengers.</p>
+<form method="post"><button class="btn-primary" type="submit">Run now (dry run)</button></form>
+@if (Model.Summary is { } run) {
+<h2>Last completed run</h2>
+<p>@SaTime.ToSa(run.RanAtUtc).ToString("dd MMM yyyy HH:mm:ss") SAST · Dry run: @run.DryRun · Enabled: @run.Enabled</p>
+<div class="staff-table"><table class="hopon-table"><thead><tr><th>Record</th><th>Count</th></tr></thead><tbody>
+<tr><td>Locations</td><td>@run.Locations</td></tr><tr><td>Boarding logs</td><td>@run.Boardings</td></tr>
+<tr><td>Notifications</td><td>@run.Notifications</td></tr><tr><td>Audit entries</td><td>@run.Audits</td></tr>
+<tr><td>OTP requests</td><td>@run.Otps</td></tr><tr><td>Users anonymised</td><td>@run.Users</td></tr>
+<tr><td>Emergency contacts</td><td>@run.Contacts</td></tr></tbody></table></div>
+} else { <p>No completed run since Hopon last started.</p> }
+<p>Counts in a dry run show eligible records. This summary is kept in memory and resets when Hopon restarts.</p>

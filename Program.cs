@@ -82,6 +82,10 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<ILocationThrottle, LocationThrottle>();
 builder.Services.AddSingleton<AccessAuditService>();
+builder.Services.AddOptions<RetentionOptions>().BindConfiguration("Retention")
+    .Validate(o => o.DaysAfterTrip > 0 && o.LocationDays > 0, "Retention day limits must be positive.").ValidateOnStart();
+builder.Services.AddSingleton<RetentionRunner>();
+builder.Services.AddHostedService<RetentionService>();
 builder.Services.AddScoped<PassengerNotificationWriter>();
 builder.Services.AddHostedService<NotificationSchedulerService>();
 builder.Services.AddScoped<IBoardingService, BoardingService>();
