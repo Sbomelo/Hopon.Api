@@ -55,6 +55,36 @@ public class DemoModeTests
     }
 
     [Fact]
+    public async Task Matching_stop_order_distinguishes_demo_route_from_legacy_routes_with_the_same_name()
+    {
+        await using var store = await TestDb.CreateAsync();
+        var db = store.Context;
+        var empty = new BusRoute { Name = DemoRoad.RouteName };
+        var legacy = new BusRoute { Name = DemoRoad.RouteName };
+        legacy.RouteStops.Add(new RouteStop { Stop = new Stop { Name = "Durban Station" }, SequenceOrder = 1 });
+        var legacyTrip = new Trip { BusRoute = empty, Bus = new Bus { RegistrationNumber = "LEGACY" } };
+        db.AddRange(legacy, legacyTrip);
+        await db.SaveChangesAsync();
+
+        var seeder = new DemoSeeder(db, new FakeTimeProvider(Now));
+        await seeder.SeedAsync();
+        var demoRouteId = await db.Tickets.Where(t => t.TicketReference == DemoSeeder.LiveTicket)
+            .Select(t => t.Trip.BusRouteId).SingleAsync();
+        Assert.NotEqual(empty.Id, demoRouteId);
+        Assert.NotEqual(legacy.Id, demoRouteId);
+
+        db.ChangeTracker.Clear();
+        await seeder.SeedAsync(reset: true);
+        Assert.Equal(demoRouteId, await db.Tickets.Where(t => t.TicketReference == DemoSeeder.LiveTicket)
+            .Select(t => t.Trip.BusRouteId).SingleAsync());
+        Assert.Equal(3, await db.BusRoutes.CountAsync());
+        Assert.Empty(await db.RouteStops.Where(rs => rs.BusRouteId == empty.Id).ToListAsync());
+        Assert.Equal("Durban Station", await db.RouteStops.Where(rs => rs.BusRouteId == legacy.Id)
+            .Select(rs => rs.Stop.Name).SingleAsync());
+        Assert.True(await db.Trips.AnyAsync(t => t.Id == legacyTrip.Id && t.BusRouteId == empty.Id));
+    }
+
+    [Fact]
     public async Task Reset_replaces_only_seeded_trips_even_when_route_bus_and_passenger_are_shared()
     {
         await using var store = await TestDb.CreateAsync();
