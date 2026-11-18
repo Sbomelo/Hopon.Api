@@ -1,0 +1,39 @@
+@page
+@model Hopon.Api.Pages.Admin.NotificationsModel
+@using Hopon.Api.Models.Enums
+@{
+    ViewData["Title"] = "Notification log";
+}
+<h1>Notification log</h1>
+<p>Read-only delivery attempts, newest first. Timestamp is when the attempt was created, in SAST.</p>
+<form method="get" class="hopon-form">
+    <div asp-validation-summary="All" class="text-error"></div>
+    <label asp-for="Filter.TripId">Trip</label>
+    <select asp-for="Filter.TripId" asp-items="Model.TripItems"><option value="">All trips</option></select>
+    <label asp-for="Filter.Passenger">Passenger name or phone contains</label>
+    <input asp-for="Filter.Passenger" />
+    <label asp-for="Filter.Type">Type</label>
+    <select asp-for="Filter.Type" asp-items="Html.GetEnumSelectList<NotificationType>()"><option value="">All types</option></select>
+    <label asp-for="Filter.Channel">Channel</label>
+    <select asp-for="Filter.Channel" asp-items="Html.GetEnumSelectList<NotificationChannel>()"><option value="">All channels</option></select>
+    <label asp-for="Filter.Status">Status</label>
+    <select asp-for="Filter.Status" asp-items="Html.GetEnumSelectList<NotificationStatus>()"><option value="">All statuses</option></select>
+    <p><button class="btn-primary" type="submit">Filter</button> <a class="btn-secondary" asp-page="/Admin/Notifications">Clear</a></p>
+</form>
+<p>@Model.Log.Total result(s) · Page @Model.Log.PageNumber of @Model.Log.TotalPages · 50 per page</p>
+<div class="staff-table">
+<table class="hopon-table">
+    <thead><tr><th>Timestamp (SAST)</th><th>Passenger</th><th>Trip route</th><th>Type</th><th>Channel</th><th>Status</th><th>Message</th></tr></thead>
+    <tbody>
+    @foreach (var item in Model.Log.Items)
+    {
+        <tr><td>@SaTime.ToSa(item.Timestamp).ToString("dd MMM yyyy, HH:mm:ss")</td><td>@item.Passenger</td><td>@(item.Route ?? "—")</td><td>@item.Type</td><td>@item.Channel</td><td>@item.Status</td><td>@item.Message</td></tr>
+    }
+    @if (Model.Log.Items.Count == 0) { <tr><td colspan="7">No notifications match these filters.</td></tr> }
+    </tbody>
+</table>
+</div>
+<nav aria-label="Notification pages">
+    @if (Model.Log.PageNumber > 1) { <a class="btn-secondary" asp-page="/Admin/Notifications" asp-all-route-data="Model.PageValues(Model.Log.PageNumber - 1)">Previous</a> }
+    @if (Model.Log.PageNumber < Model.Log.TotalPages) { <a class="btn-secondary" asp-page="/Admin/Notifications" asp-all-route-data="Model.PageValues(Model.Log.PageNumber + 1)">Next</a> }
+</nav>

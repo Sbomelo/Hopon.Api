@@ -70,6 +70,7 @@ builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<ITripAccessService, TripAccessService>();
 builder.Services.AddScoped<ITripDashboardService, TripDashboardService>();
 builder.Services.AddScoped<IAdminTripService, AdminTripService>();
+builder.Services.AddScoped<IAdminConsoleService, AdminConsoleService>();
 builder.Services.AddScoped<IDriverAuthService, DriverAuthService>();
 builder.Services.AddScoped<IDriverTripAccessService, DriverTripAccessService>();
 builder.Services.AddScoped<ITripLifecycleService, TripLifecycleService>();

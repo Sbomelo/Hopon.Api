@@ -36,7 +36,7 @@ public class StaffAuthenticationTests
     }
 
     [Theory]
-    [InlineData("Admin", "admin-test", "/Admin/Trips", "/Driver/Trip")]
+    [InlineData("Admin", "admin-test", "/Admin", "/Driver/Trip")]
     [InlineData("Driver", "driver-one", "/Driver/Trip", "/Admin/Trips")]
     public async Task Cookies_enforce_roles_and_do_not_authenticate_APIs(string role, string username, string own, string other)
     {
