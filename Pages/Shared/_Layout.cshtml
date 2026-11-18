@@ -20,7 +20,13 @@
         <nav class="hopon-nav">
             @if (staff?.IsInRole("Admin") == true)
             {
+                <a asp-page="/Admin/Index">Home</a>
+                <a asp-page="/Admin/Monitor">Live monitor</a>
                 <a asp-page="/Admin/Trips/Index">Trips</a>
+                <a asp-page="/Admin/Notifications">Notifications</a>
+                <a asp-page="/Admin/Buses/Index">Buses</a>
+                <a asp-page="/Admin/Stops/Index">Stops</a>
+                <a asp-page="/Admin/Routes/Index">Routes</a>
                 <a asp-page="/Admin/Drivers/Index">Drivers</a>
             }
             @if (staff?.IsInRole("Driver") == true)

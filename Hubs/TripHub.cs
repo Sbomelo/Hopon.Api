@@ -9,16 +9,20 @@ namespace Hopon.Api.Hubs;
 public class TripHub : Hub
 {
     private readonly ITripAccessService _accessService;
+    private readonly TripTrackingSessions _sessions;
 
-    public TripHub(ITripAccessService accessService)
+    public TripHub(ITripAccessService accessService, TripTrackingSessions sessions)
     {
         _accessService = accessService;
+        _sessions = sessions;
     }
 
     public async Task JoinTrip(int tripId)
     {
         var userId = GetUserId();
-        var result = await _accessService.CheckTripAccessAsync(userId, tripId);
+        await _sessions.JoinAsync(userId, tripId, Context.ConnectionId, async () =>
+        {
+            var result = await _accessService.CheckTripAccessAsync(userId, tripId);
 
         if (!result.HasAccess)
             throw new HubException("You do not have access to this trip.");
@@ -26,12 +30,20 @@ public class TripHub : Hub
         if (!result.IsTrackingActive)
             throw new HubException("Live tracking is not active for this trip.");
 
-        await Groups.AddToGroupAsync(Context.ConnectionId, GroupName(tripId));
+            await Groups.AddToGroupAsync(Context.ConnectionId, GroupName(tripId));
+        });
     }
 
     public async Task LeaveTrip(int tripId)
     {
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, GroupName(tripId));
+        await _sessions.LeaveAsync(Context.ConnectionId, tripId);
+    }
+
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        await _sessions.LeaveAsync(Context.ConnectionId);
+        await base.OnDisconnectedAsync(exception);
     }
 
     private int GetUserId()

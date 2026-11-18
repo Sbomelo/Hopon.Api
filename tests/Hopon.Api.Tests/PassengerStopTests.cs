@@ -244,7 +244,7 @@ public class PassengerStopTests
         var admin = await service.GetTripDetailAsync(id);
         Assert.Equal("Middle", admin!.Tickets.Single(t => t.TicketReference != "LEGACY").DestinationStopName);
         Assert.Null(admin.Tickets.Single(t => t.TicketReference == "LEGACY").DestinationStopName);
-        var page = new DetailsModel(service, null!, database.Context);
+        var page = new DetailsModel(service, null!, null!);
         Assert.IsType<PageResult>(await page.OnGetAsync(id));
         Assert.NotEmpty(page.PassengerItems);
         Assert.Equal(3, page.TripStopItems.Count);
@@ -271,7 +271,7 @@ public class PassengerStopTests
             new() { SequenceOrder = 20, Stop = new Stop { Name = "Middle", Latitude = 0, Longitude = 1 } },
             new() { SequenceOrder = 30, Stop = new Stop { Name = "Last", Latitude = 0, Longitude = 3 } }
         } };
-        var bus = new Bus { RegistrationNumber = "TEST", Capacity = 50 };
+        var bus = new Bus { RegistrationNumber = "TEST-" + Guid.NewGuid().ToString("N"), Capacity = 50 };
         database.Context.AddRange(route, bus);
         await database.Context.SaveChangesAsync();
         return (route, bus);

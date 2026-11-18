@@ -297,7 +297,7 @@ public class TripLifecycleTests
                 new PassengerNotificationWriter(Db, NullLogger<PassengerNotificationWriter>.Instance),
                 TimeProvider.System, Sender, Options.Create(new NotificationOptions {
                     SmsEnabled = true, SmsTypes = cancellationSms ? ["Cancellation"] : [] }));
-            Service = new TripLifecycleService(Db, NullLogger<TripLifecycleService>.Instance, Hub, notifications);
+            Service = new TripLifecycleService(Db, NullLogger<TripLifecycleService>.Instance, Hub, notifications, new LocationThrottle(TimeProvider.System));
         }
 
         public static async Task<Fixture> CreateAsync(TripStatus status, bool cancellationSms = false)

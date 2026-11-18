@@ -19,6 +19,7 @@ public class AdminTripDetailDto
 
 public class AdminTicketSummaryDto
 {
+    public int TicketId { get; set; }
     public string TicketReference { get; set; } = string.Empty;
     public string PassengerName { get; set; } = string.Empty;
     public string? SeatNumber { get; set; }

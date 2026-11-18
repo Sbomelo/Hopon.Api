@@ -1,0 +1,22 @@
+@page
+@model Hopon.Api.Pages.Admin.Stops.IndexModel
+@using System.Globalization
+@{ ViewData["Title"] = "Stops"; }
+<h1>Stops</h1>
+@if (Model.Error is not null) { <p class="text-error" role="alert">@Model.Error</p> }
+<div asp-validation-summary="All" class="text-error"></div>
+<p><a class="btn-primary" asp-page="./Edit">Add stop</a></p>
+<div class="staff-table"><table class="hopon-table">
+    <thead><tr><th>Name</th><th>Latitude</th><th>Longitude</th><th>Point</th><th>Actions</th></tr></thead>
+    <tbody>
+    @foreach (var stop in Model.Stops)
+    {
+        <tr><td>@stop.Name</td><td>@stop.Latitude?.ToString("F5", CultureInfo.InvariantCulture)</td><td>@stop.Longitude?.ToString("F5", CultureInfo.InvariantCulture)</td>
+            <td><a href="@stop.LocationUrl" target="_blank" rel="noopener noreferrer">Check on OpenStreetMap</a></td><td>
+            <a class="btn-secondary" asp-page="./Edit" asp-route-id="@stop.Id">Edit</a>
+            <form method="post" asp-page-handler="Delete" asp-route-id="@stop.Id" class="admin-inline" onsubmit="return confirm('Delete this stop?');"><button class="btn-danger" type="submit">Delete</button></form>
+        </td></tr>
+    }
+    @if (Model.Stops.Count == 0) { <tr><td colspan="5">No stops yet.</td></tr> }
+    </tbody>
+</table></div>
