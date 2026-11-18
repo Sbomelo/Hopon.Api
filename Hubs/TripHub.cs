@@ -1,5 +1,6 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Hopon.Api.Services;
+using Hopon.Api.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
@@ -10,11 +11,13 @@ public class TripHub : Hub
 {
     private readonly ITripAccessService _accessService;
     private readonly TripTrackingSessions _sessions;
+    private readonly AccessAuditService _audit;
 
-    public TripHub(ITripAccessService accessService, TripTrackingSessions sessions)
+    public TripHub(ITripAccessService accessService, TripTrackingSessions sessions, AccessAuditService audit)
     {
         _accessService = accessService;
         _sessions = sessions;
+        _audit = audit;
     }
 
     public async Task JoinTrip(int tripId)
@@ -31,6 +34,7 @@ public class TripHub : Hub
             throw new HubException("Live tracking is not active for this trip.");
 
             await Groups.AddToGroupAsync(Context.ConnectionId, GroupName(tripId));
+            await _audit.RecordAsync(userId, tripId, AccessAction.JoinedLiveTracking);
         });
     }
 

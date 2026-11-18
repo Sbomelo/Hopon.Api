@@ -127,4 +127,48 @@ public class PrivacyOpsTests
         Assert.Equal(1, writes);
     }
 
+    [Fact]
+    public async Task Audit_rate_limit_is_per_user_trip_action_and_allows_exact_five_minutes()
+    {
+        await using var f = await Fixture.Create();
+        var audit = new AccessAuditService(f.Provider.GetRequiredService<IServiceScopeFactory>(), f.Clock, NullLogger<AccessAuditService>.Instance);
+        await Task.WhenAll(Enumerable.Range(0, 12).Select(_ => audit.RecordAsync(1, 1, AccessAction.ViewedMap)));
+        await audit.RecordAsync(2, 1, AccessAction.ViewedMap);
+        await audit.RecordAsync(1, 2, AccessAction.ViewedMap);
+        await audit.RecordAsync(1, 1, AccessAction.ViewedHistory);
+        await audit.RecordAsync(1, null, AccessAction.ViewedNotifications);
+        Assert.Equal(5, await f.Db.AccessAuditLogs.CountAsync());
+        f.Clock.Advance(TimeSpan.FromMinutes(5) - TimeSpan.FromMilliseconds(1));
+        await audit.RecordAsync(1, 1, AccessAction.ViewedMap);
+        Assert.Equal(5, await f.Db.AccessAuditLogs.CountAsync());
+        f.Clock.Advance(TimeSpan.FromMilliseconds(1));
+        await audit.RecordAsync(1, 1, AccessAction.ViewedMap);
+        Assert.Equal(6, await f.Db.AccessAuditLogs.CountAsync());
+    }
+
+    [Fact]
+    public async Task Audit_database_failure_is_swallowed()
+    {
+        using var provider = new ServiceCollection().BuildServiceProvider();
+        await new AccessAuditService(provider.GetRequiredService<IServiceScopeFactory>(), TimeProvider.System,
+            NullLogger<AccessAuditService>.Instance).RecordAsync(1, null, AccessAction.ViewedNotifications);
+    }
+
+    private sealed class Fixture : IAsyncDisposable
+    {
+        private readonly SqliteConnection _connection = new("Data Source=:memory:");
+        public ServiceProvider Provider { get; private set; } = null!;
+        public HoponDbContext Db { get; private set; } = null!;
+        public FakeTimeProvider Clock { get; } = new(new DateTimeOffset(2026, 11, 18, 10, 0, 0, TimeSpan.Zero));
+        public static async Task<Fixture> Create()
+        {
+            var f = new Fixture();
+            await f._connection.OpenAsync();
+            f.Provider = new ServiceCollection().AddDbContext<HoponDbContext>(o => o.UseSqlite(f._connection)).BuildServiceProvider();
+            f.Db = f.Provider.GetRequiredService<HoponDbContext>();
+            await f.Db.Database.EnsureCreatedAsync();
+            return f;
+        }
+        public async ValueTask DisposeAsync() { await Provider.DisposeAsync(); await _connection.DisposeAsync(); }
+    }
 }

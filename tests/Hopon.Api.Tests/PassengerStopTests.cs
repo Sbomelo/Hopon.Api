@@ -234,7 +234,7 @@ public class PassengerStopTests
             Assert.Equal(expectedName, history!.DestinationStopName);
             Assert.Equal(expectedArrival, history.DestinationScheduledArrival);
             var access = await new TripAccessService(database.Context).CheckTripAccessAsync(userId, id);
-            var controller = new TripsController(null!, null!, null!, null!)
+            var controller = new TripsController(null!, null!, null!, null!, null!)
             { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() } };
             controller.HttpContext.Items["TripAccessResult"] = access;
             var dto = Assert.IsType<TripAccessResponseDto>(Assert.IsType<OkObjectResult>(controller.CheckAccess(id)).Value);

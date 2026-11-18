@@ -7,6 +7,7 @@ public class HoponDbContext : DbContext
 {
     public HoponDbContext(DbContextOptions<HoponDbContext> options) : base(options) { }
 
+    public DbSet<AccessAuditLog> AccessAuditLogs { get; set; } = null!;
     public DbSet<User> Users { get; set; } = null!;
     public DbSet<EmergencyContact> EmergencyContacts { get; set; } = null!;
     public DbSet<Driver> Drivers { get; set; } = null!;
@@ -32,6 +33,7 @@ public class HoponDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<AccessAuditLog>().HasIndex(x => new { x.UserId, x.CreatedAt });
         //User
         modelBuilder.Entity<User>()
                 .HasIndex(u => u.PhoneNumber)
