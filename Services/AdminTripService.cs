@@ -97,6 +97,7 @@ namespace Hopon.Api.Services
                 Status = trip.Status.ToString(),
                 Tickets = tickets.Select(tk => new AdminTicketSummaryDto
                 {
+                    TicketId = tk.Id,
                     TicketReference = tk.TicketReference,
                     PassengerName = tk.User.FullName,
                     SeatNumber = tk.SeatNumber,
@@ -197,6 +198,22 @@ namespace Hopon.Api.Services
         }
 
         public async Task<(bool Success, string? Error, string? TicketReference)> IssueTicketAsync(int tripId, int userId, string? seatNumber, int destinationTripStopId, int? originTripStopId = null)
+        {
+            try
+            {
+                await using var transaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+                var result = await IssueTicketCoreAsync(tripId, userId, seatNumber, destinationTripStopId, originTripStopId);
+                if (result.Success) await transaction.CommitAsync();
+                return result;
+            }
+            catch (DbUpdateException)
+            {
+                _db.ChangeTracker.Clear();
+                return (false, "Could not issue the ticket. Someone may have just issued one for this passenger or seat. Please try again.", null);
+            }
+        }
+
+        private async Task<(bool Success, string? Error, string? TicketReference)> IssueTicketCoreAsync(int tripId, int userId, string? seatNumber, int destinationTripStopId, int? originTripStopId)
         {
             var trip = await _db.Trips
                                 .Include(t => t.Bus)

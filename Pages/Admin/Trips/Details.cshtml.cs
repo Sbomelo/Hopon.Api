@@ -1,12 +1,10 @@
 using Hopon.Api.DTOs.Admin;
-using Hopon.Api.Data;
 using Hopon.Api.Extensions;
 using Hopon.Api.Models.Enums;
 using Hopon.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
 namespace Hopon.Api.Pages.Admin.Trips
@@ -15,14 +13,14 @@ namespace Hopon.Api.Pages.Admin.Trips
     {
 
         private readonly IAdminTripService _tripService;
-        private readonly ITripLifecycleService _lifecycle;
-        private readonly HoponDbContext _db;
+        private readonly IAdminTripActionsService _actions;
+        private readonly IAdminTicketService _tickets;
 
-        public DetailsModel(IAdminTripService tripService, ITripLifecycleService lifecycle, HoponDbContext db)
+        public DetailsModel(IAdminTripService tripService, IAdminTripActionsService actions, IAdminTicketService tickets)
         {
             _tripService = tripService;
-            _lifecycle = lifecycle;
-            _db = db;
+            _actions = actions;
+            _tickets = tickets;
         }
 
         [BindProperty] public string? CancellationReason { get; set; }
@@ -32,7 +30,6 @@ namespace Hopon.Api.Pages.Admin.Trips
         public List<SelectListItem> PassengerItems { get; set; } = new();
         public List<SelectListItem> TripStopItems { get; set; } = new();
 
-        [BindProperty]
         public IssueTicketInput Input { get; set; } = new();
 
         [TempData]
@@ -62,39 +59,44 @@ namespace Hopon.Api.Pages.Admin.Trips
 
         public async Task<IActionResult> OnPostCancelAsync(int id)
         {
-            var trip = await _db.Trips.FindAsync(id);
-            if (trip is null)
+            var (found, success, error) = await _actions.ApplyAsync(id, AdminTripAction.Cancel, CancellationReason);
+            if (!found)
                 return NotFound();
-
-            var (success, error) = await _lifecycle.CancelAsync(trip, CancellationReason);
             if (!success) LifecycleError = error;
             return RedirectToPage("./Details", new { id });
         }
 
-        public async Task<IActionResult> OnPostIssueTicketAsync(int id)
+        public async Task<IActionResult> OnPostIssueTicketAsync(int id, IssueTicketInput input)
         {
+            Input = input;
             if (!ModelState.IsValid)
                 return await ReloadPageAsync(id);
 
-            try
-            {
-                var (success, error, reference) = await _tripService.IssueTicketAsync(id, Input.UserId!.Value,
-                    Input.SeatNumber, Input.DestinationTripStopId!.Value, Input.OriginTripStopId);
+            var (success, error, reference) = await _tripService.IssueTicketAsync(id, Input.UserId!.Value,
+                Input.SeatNumber, Input.DestinationTripStopId!.Value, Input.OriginTripStopId);
 
-                if (!success)
-                {
-                    ModelState.AddModelError(string.Empty, error!);
-                    return await ReloadPageAsync(id);
-                }
-
-                SuccessMessage = $"Ticket {reference} issued.";
-                return RedirectToPage("./Details", new { id });
-            }
-            catch (DbUpdateException)
+            if (!success)
             {
-                ModelState.AddModelError(string.Empty, "Could not issue the ticket. Someone may have just issued one for this passenger or seat. Please try again.");
+                ModelState.AddModelError(string.Empty, error!);
                 return await ReloadPageAsync(id);
             }
+
+            SuccessMessage = $"Ticket {reference} issued.";
+            return RedirectToPage("./Details", new { id });
+        }
+
+        public Task<IActionResult> OnPostVoidAsync(int id, TicketActionInput ticketAction) => ChangeTicketAsync(id, ticketAction, false);
+        public Task<IActionResult> OnPostReinstateAsync(int id, TicketActionInput ticketAction) => ChangeTicketAsync(id, ticketAction, true);
+
+        private async Task<IActionResult> ChangeTicketAsync(int id, TicketActionInput ticketAction, bool active)
+        {
+            if (!ModelState.IsValid)
+                return await ReloadPageAsync(id);
+            if (await _tripService.GetTripDetailAsync(id) is null) return NotFound();
+            var (success, error) = await _tickets.SetActiveAsync(id, ticketAction.TicketId, active);
+            if (!success) LifecycleError = error;
+            else SuccessMessage = active ? "Ticket reinstated." : "Ticket voided.";
+            return RedirectToPage("./Details", new { id });
         }
 
         private async Task<IActionResult> ReloadPageAsync(int id)

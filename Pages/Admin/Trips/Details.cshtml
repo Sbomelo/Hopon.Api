@@ -12,6 +12,8 @@ else
 {
     var trip = Model.Trip;
     <h1>@trip.RouteName</h1>
+    <div asp-validation-summary="All" class="text-error"></div>
+    @if (Model.SuccessMessage is not null) { <p role="status">@Model.SuccessMessage</p> }
     <p><span class="badge">@trip.Status</span></p>
 
     @if (Model.LifecycleError != null)
@@ -45,7 +47,7 @@ else
 
     <h2 style="margin-top:2rem;">Tickets (@trip.Tickets.Count)</h2>
     <table class="hopon-table">
-        <thead><tr><th>Reference</th><th>Passenger</th><th>Seat</th><th>Destination stop</th><th>Scheduled arrival (SAST)</th><th>Active</th></tr></thead>
+        <thead><tr><th>Reference</th><th>Passenger</th><th>Seat</th><th>Destination stop</th><th>Scheduled arrival (SAST)</th><th>Active</th><th>Action</th></tr></thead>
         <tbody>
             @foreach (var ticket in trip.Tickets)
             {
@@ -56,11 +58,22 @@ else
                     <td>@(ticket.DestinationStopName ?? "—")</td>
                     <td>@(ticket.DestinationScheduledArrival.HasValue ? SaTime.ToSa(ticket.DestinationScheduledArrival.Value).ToString("dd MMM yyyy, HH:mm") : "—")</td>
                     <td>@(ticket.IsActive ? "Yes" : "No")</td>
+                    <td>
+                    @if (trip.Status == "Scheduled")
+                    {
+                        var action = ticket.IsActive ? "Void" : "Reinstate";
+                        <form method="post" asp-page-handler="@action" asp-route-id="@trip.TripId" onsubmit="return confirm('@action this ticket?');">
+                            <input type="hidden" name="TicketAction.TicketId" value="@ticket.TicketId" />
+                            <button type="submit" class="@(ticket.IsActive ? "btn-danger" : "btn-secondary")">@action</button>
+                        </form>
+                    }
+                    else { <span>Scheduled trips only</span> }
+                    </td>
                 </tr>
             }
             @if (!trip.Tickets.Any())
             {
-                <tr><td colspan="6">No tickets booked yet.</td></tr>
+                <tr><td colspan="7">No tickets booked yet.</td></tr>
             }
         </tbody>
     </table>

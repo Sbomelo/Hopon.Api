@@ -1,7 +1,6 @@
 using Hopon.Api.Extensions;
 using Hopon.Api.Services;
-using Hopon.Api.Data;
-using Hopon.Api.Models;
+using Hopon.Api.DTOs.Admin;
 using Hopon.Api.Models.Enums;
 using Hopon.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -16,14 +15,12 @@ namespace Hopon.Api.Pages.Admin.Trips
     {
 
         private readonly IAdminTripService _tripService;
-        private readonly ITripLifecycleService _lifecycle;
-        private readonly HoponDbContext _db;
+        private readonly IAdminTripActionsService _actions;
 
-        public EditModel(IAdminTripService tripService, ITripLifecycleService lifecycle, HoponDbContext db)
+        public EditModel(IAdminTripService tripService, IAdminTripActionsService actions)
         {
             _tripService = tripService;
-            _lifecycle = lifecycle;
-            _db = db;
+            _actions = actions;
         }
 
         [BindProperty] public string? DelayReason { get; set; }
@@ -107,21 +104,19 @@ namespace Hopon.Api.Pages.Admin.Trips
         }
 
         public Task<IActionResult> OnPostMarkDelayedAsync()
-            => ChangeStatusAsync(trip => _lifecycle.ReportDelayedAsync(trip, DelayReason ?? string.Empty));
+            => ChangeStatusAsync(AdminTripAction.Delay, DelayReason);
 
         public Task<IActionResult> OnPostResumeAsync()
-            => ChangeStatusAsync(_lifecycle.ResumeFromDelayAsync);
+            => ChangeStatusAsync(AdminTripAction.Resume);
 
         public Task<IActionResult> OnPostMarkCompletedAsync()
-            => ChangeStatusAsync(_lifecycle.CompletedAsync);
+            => ChangeStatusAsync(AdminTripAction.Complete);
 
-        private async Task<IActionResult> ChangeStatusAsync(Func<Trip, Task<(bool Success, string? Error)>> action)
+        private async Task<IActionResult> ChangeStatusAsync(AdminTripAction action, string? reason = null)
         {
-            var trip = await _db.Trips.FindAsync(Id);
-            if (trip is null)
+            var (found, success, error) = await _actions.ApplyAsync(Id, action, reason);
+            if (!found)
                 return NotFound();
-
-            var (success, error) = await action(trip);
             if (!success)
             {
                 LifecycleError = error;
@@ -132,8 +127,8 @@ namespace Hopon.Api.Pages.Admin.Trips
 
         private async Task LoadOptionsAsync()
         {
-            var trip = await _db.Trips.FindAsync(Id);
-            if (trip != null) Status = trip.Status;
+            var trip = await _tripService.GetTripDetailAsync(Id);
+            if (trip != null && Enum.TryParse<TripStatus>(trip.Status, out var status)) Status = status;
             RouteItems = (await _tripService.GetRouteOptionsAsync()).ToSelectListItems();
             BusItems = (await _tripService.GetBusOptionsAsync()).ToSelectListItems();
             DriverItems = (await _tripService.GetDriverOptionsAsync()).ToSelectListItems();
