@@ -1,0 +1,35 @@
+@page
+@model Hopon.Api.Pages.Admin.MonitorModel
+@using System.Globalization
+@{
+    ViewData["Title"] = "Live monitor";
+}
+<h1>Live monitor</h1>
+<p>In-progress and delayed trips. Updates every 15 seconds. GPS older than five minutes is highlighted.</p>
+<p id="monitor-status" role="status" aria-live="polite">Latest snapshot loaded.</p>
+<div class="staff-table">
+<table class="hopon-table" id="trip-monitor" data-url="@Url.Page("/Admin/Monitor", "Trips")" data-details-url="@Url.Page("/Admin/Trips/Details", new { id = 0 })">
+    <thead><tr><th>Route</th><th>Bus</th><th>Driver</th><th>Status</th><th>Last GPS fix</th><th>Next pending stop</th><th>Final ETA (SAST)</th><th>Trip</th></tr></thead>
+    <tbody>
+    @foreach (var trip in Model.Trips)
+    {
+        <tr>
+            <td>@trip.Route</td><td>@trip.Bus</td><td>@(trip.Driver ?? "Unassigned")</td><td>@trip.Status</td>
+            <td class="@(trip.AgeMinutes is null or > 5 ? "text-error" : "")">
+            @if (trip.LocationUrl is not null)
+            {
+                <a href="@trip.LocationUrl" target="_blank" rel="noopener noreferrer">@trip.Latitude?.ToString("F5", CultureInfo.InvariantCulture), @trip.Longitude?.ToString("F5", CultureInfo.InvariantCulture) · @trip.AgeMinutes?.ToString("F1", CultureInfo.InvariantCulture) min ago · OSM</a>
+            }
+            else { <span>No GPS fix</span> }
+            </td>
+            <td>@(trip.NextStop ?? "—")</td><td>@(trip.FinalEtaSast ?? "—")</td>
+            <td><a asp-page="/Admin/Trips/Details" asp-route-id="@trip.TripId">Details</a></td>
+        </tr>
+    }
+    @if (Model.Trips.Count == 0) { <tr><td colspan="8">No in-progress or delayed trips.</td></tr> }
+    </tbody>
+</table>
+</div>
+@section Scripts {
+    <script src="~/js/monitor.js" asp-append-version="true"></script>
+}
