@@ -12,13 +12,15 @@ namespace Hopon.Api.Services
     public class TripLifecycleService : ITripLifecycleService
     {
         private readonly HoponDbContext _db;
+        private readonly ILocationThrottle _locationThrottle;
         private readonly ILogger<TripLifecycleService> _logger;
         private readonly IHubContext<TripHub> _hubContext;
         private readonly INotificationService _notificationService;
 
-        public TripLifecycleService(HoponDbContext db, ILogger<TripLifecycleService> logger, IHubContext<TripHub> hubContext, INotificationService notificationService)
+        public TripLifecycleService(HoponDbContext db, ILogger<TripLifecycleService> logger, IHubContext<TripHub> hubContext, INotificationService notificationService, ILocationThrottle locationThrottle)
         {
             _db = db;
+            _locationThrottle = locationThrottle;
             _logger = logger;
             _hubContext = hubContext;
             _notificationService = notificationService;
@@ -101,29 +103,24 @@ namespace Hopon.Api.Services
         private static (bool Success, string? Error) InvalidTransition(Trip trip, TripStatus target)
             => (false, $"Cannot change trip status from {trip.Status} to {target}.");
 
-        public async Task<(bool Success, string? Error)> RecordLocationAsync(Trip trip, double latitude, double longitude)
+        public async Task<LocationRecordResult> RecordLocationAsync(Trip trip, double latitude, double longitude)
         {
             if (!TripStatusRules.IsTrackingActive(trip.Status))
-                return (false, $"Cannot record location for a trip that is {trip.Status}");
+                return new(LocationOutcome.Rejected, $"Cannot record location for a trip that is {trip.Status}");
 
-            _db.LocationUpdates.Add(new LocationUpdate {
-                TripId = trip.Id,
-                Latitude = latitude,
-                Longitude = longitude,
-                RecordedAt = DateTime.UtcNow
-            });
-
-            await _db.SaveChangesAsync();
-
-            await _hubContext.Clients.Group(TripHub.GroupName(trip.Id)).SendAsync("ReceiveLocationUpdate", new LocationBroadCastDto
-            {
-                TripId = trip.Id,
-                Latitude = latitude,
-                Longitude = longitude,
-                RecordedAt = DateTime.UtcNow
-            });
-
-            return (true, null);
+            return await _locationThrottle.RecordAsync(trip.Id, latitude, longitude,
+                () => _db.LocationUpdates.AsNoTracking().Where(x => x.TripId == trip.Id)
+                    .OrderByDescending(x => x.RecordedAt).FirstOrDefaultAsync(),
+                async fix =>
+                {
+                    // Page-load map data may lag by 15 seconds; every accepted fix is broadcast live.
+                    _db.LocationUpdates.Add(fix);
+                    await _db.SaveChangesAsync();
+                },
+                fix => _hubContext.Clients.Group(TripHub.GroupName(trip.Id)).SendAsync("ReceiveLocationUpdate", new LocationBroadCastDto
+                {
+                    TripId = trip.Id, Latitude = fix.Latitude, Longitude = fix.Longitude, RecordedAt = fix.RecordedAt
+                }));
         }
 
         public async Task<(bool Success, string? Error)> MarkStopArrivedAsync(Trip trip, int tripStopId)

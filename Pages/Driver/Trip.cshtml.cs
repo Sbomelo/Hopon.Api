@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Hopon.Api.Data;
+using Hopon.Api.Services;
 using Hopon.Api.DTOs.Drivers;
 using Hopon.Api.Models;
 using Hopon.Api.Services.Interfaces;
@@ -22,6 +23,7 @@ namespace Hopon.Api.Pages.Driver
         public bool ActionSuccess { get; set; }
 
         [BindProperty] public string DelayReason { get; set; } = string.Empty;
+        [BindProperty] public int LocationTripId { get; set; }
         [BindProperty] public double Latitude { get; set; }
         [BindProperty] public double Longitude { get; set; }
         [BindProperty] public int TripStopId { get; set; }
@@ -44,8 +46,16 @@ namespace Hopon.Api.Pages.Driver
             var trip = await LoadTrackedTripAsync();
             if (trip is null) return await NoTripResult();
 
-            var (ok, err) = await _tripService.RecordLocationAsync(trip, Latitude, Longitude);
-            return await Refresh(ok, ok ? "📍 Location posted and broadcast to passengers." : err!);
+            if (LocationTripId != trip.Id) return BadRequest(new { message = "Your assigned trip changed. Reload Hopon before sharing location." });
+            if (!Request.Form.ContainsKey("Latitude") || !Request.Form.ContainsKey("Longitude") ||
+                ModelState[nameof(Latitude)]?.Errors.Count > 0 || ModelState[nameof(Longitude)]?.Errors.Count > 0)
+                return BadRequest(new { message = "Please provide valid GPS coordinates." });
+            var result = await _tripService.RecordLocationAsync(trip, Latitude, Longitude);
+            var message = result.Error ?? "Location shared with passengers.";
+            if (Request.Headers["X-Requested-With"] == "fetch")
+                return new JsonResult(new { message }) { StatusCode = result.Outcome == LocationOutcome.Recorded ? 200 : result.Outcome == LocationOutcome.Throttled ? 429 : 400 };
+            Response.StatusCode = result.Outcome == LocationOutcome.Recorded ? 200 : result.Outcome == LocationOutcome.Throttled ? 429 : 400;
+            return await Refresh(result.Outcome == LocationOutcome.Recorded, message);
         }
 
         public async Task<IActionResult> OnPostMarkArrivedAsync()

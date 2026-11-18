@@ -80,6 +80,7 @@ builder.Services.AddScoped<IDriverTripAccessService, DriverTripAccessService>();
 builder.Services.AddScoped<ITripLifecycleService, TripLifecycleService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<ILocationThrottle, LocationThrottle>();
 builder.Services.AddScoped<PassengerNotificationWriter>();
 builder.Services.AddHostedService<NotificationSchedulerService>();
 builder.Services.AddScoped<IBoardingService, BoardingService>();

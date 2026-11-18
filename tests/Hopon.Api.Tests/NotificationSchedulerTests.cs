@@ -270,6 +270,7 @@ public class NotificationSchedulerTests
             services.AddOptions<NotificationOptions>().Configure(o => o.SmsEnabled = smsEnabled);
             services.AddScoped<INotificationService, NotificationService>();
             services.AddScoped<ITripLifecycleService, TripLifecycleService>();
+            services.AddSingleton<ILocationThrottle, LocationThrottle>();
             services.AddSingleton<NotificationSchedulerService>();
             Services = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
         }

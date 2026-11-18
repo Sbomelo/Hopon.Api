@@ -1,4 +1,5 @@
 using Hopon.Api.DTOs.Drivers;
+using Hopon.Api.Services;
 using Hopon.Api.Filters;
 using Hopon.Api.Models;
 using Hopon.Api.Services.Interfaces;
@@ -87,10 +88,13 @@ namespace Hopon.Api.Controllers
         public async Task<IActionResult> PostLocation(int tripId, [FromBody] LocationRequestDto dto)
         {
             var trip = (Trip)HttpContext.Items["DriverTrip"]!;
-            var (success, error) = await _tripService.RecordLocationAsync(trip, dto.Latitude, dto.Longitude);
-
-            return success ? Ok(new { message = "Location recorded." })
-                           : BadRequest(error);
+            var result = await _tripService.RecordLocationAsync(trip, dto.Latitude, dto.Longitude);
+            return result.Outcome switch
+            {
+                LocationOutcome.Recorded => Ok(new { message = "Location recorded." }),
+                LocationOutcome.Throttled => StatusCode(429, new { message = result.Error }),
+                _ => BadRequest(new { message = result.Error })
+            };
         }
 
         private int? GetDriverId()
