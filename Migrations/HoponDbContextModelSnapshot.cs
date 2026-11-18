@@ -102,9 +102,13 @@ namespace Hopon.Api.Migrations
 
                     b.Property<string>("RegistrationNumber")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("RegistrationNumber")
+                        .IsUnique()
+                        .HasFilter("[RegistrationNumber] <> ''");
 
                     b.ToTable("Buses");
                 });

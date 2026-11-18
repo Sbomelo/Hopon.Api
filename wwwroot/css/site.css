@@ -226,3 +226,14 @@ table.hopon-table {
 .staff-form { max-width: 480px; }
 .staff-form .btn-primary { margin-top: 1rem; }
 .staff-table { overflow-x: auto; }
+
+.hopon-nav { display: flex; flex-wrap: wrap; gap: 0.75rem 1rem; }
+.hopon-nav a { margin-right: 0; }
+.hopon-brand { color: var(--color-interactive); }
+.hopon-main a:not([class]) { color: var(--color-interactive); }
+.admin-inline { display: inline-block; margin: 0.25rem; }
+td.text-error { font-weight: 700; }
+.hopon-main td.text-error a { color: var(--color-danger); }
+td { overflow-wrap: anywhere; }
+#trip-monitor { min-width: 900px; }
+#trip-monitor td:nth-child(4), #trip-monitor td:last-child { white-space: nowrap; }

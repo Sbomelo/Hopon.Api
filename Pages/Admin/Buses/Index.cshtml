@@ -1,0 +1,20 @@
+@page
+@model Hopon.Api.Pages.Admin.Buses.IndexModel
+@{ ViewData["Title"] = "Buses"; }
+<h1>Buses</h1>
+@if (Model.Error is not null) { <p class="text-error" role="alert">@Model.Error</p> }
+<div asp-validation-summary="All" class="text-error"></div>
+<p><a class="btn-primary" asp-page="./Edit">Add bus</a></p>
+<div class="staff-table"><table class="hopon-table">
+    <thead><tr><th>Registration</th><th>Model</th><th>Capacity</th><th>Actions</th></tr></thead>
+    <tbody>
+    @foreach (var bus in Model.Buses)
+    {
+        <tr><td>@bus.RegistrationNumber</td><td>@(bus.Model ?? "—")</td><td>@bus.Capacity</td><td>
+            <a class="btn-secondary" asp-page="./Edit" asp-route-id="@bus.Id">Edit</a>
+            <form method="post" asp-page-handler="Delete" asp-route-id="@bus.Id" class="admin-inline" onsubmit="return confirm('Delete this bus?');"><button class="btn-danger" type="submit">Delete</button></form>
+        </td></tr>
+    }
+    @if (Model.Buses.Count == 0) { <tr><td colspan="4">No buses yet.</td></tr> }
+    </tbody>
+</table></div>

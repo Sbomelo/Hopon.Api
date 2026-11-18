@@ -1,0 +1,48 @@
+@page "{id:int?}"
+@model Hopon.Api.Pages.Admin.Routes.EditModel
+@{ ViewData["Title"] = Model.Route is null ? "Add route" : "Edit route"; }
+<h1>@ViewData["Title"]</h1>
+@if (Model.Error is not null) { <p class="text-error" role="alert">@Model.Error</p> }
+<div asp-validation-summary="All" class="text-error"></div>
+<form method="post" class="hopon-form staff-form">
+    <label asp-for="Input.Name">Route name</label><input asp-for="Input.Name" />
+    <p><button type="submit" class="btn-primary">Save route</button> <a class="btn-secondary" asp-page="./Index">Back</a></p>
+</form>
+@if (Model.Route is not null)
+{
+    <h2>Ordered stops</h2>
+    <p>At least two different stops are needed before creating a trip. New stops are appended for future trips; existing trip stops remain unchanged.</p>
+    @if (Model.Route.UsedByTrips)
+    {
+        <p role="status">This route is used by a trip. Stops cannot be reordered or removed because trip schedules and passenger destinations rely on that order. Create a new route instead.</p>
+    }
+    <div class="staff-table"><table class="hopon-table">
+        <thead><tr><th>Order</th><th>Stop</th><th>Actions</th></tr></thead>
+        <tbody>
+        @foreach (var stop in Model.Route.Stops)
+        {
+            <tr><td>@stop.SequenceOrder</td><td>@stop.Name</td><td>
+            @if (!Model.Route.UsedByTrips)
+            {
+                @if (stop.SequenceOrder > 1)
+                {
+                    <form method="post" asp-page-handler="MoveUp" class="admin-inline"><input type="hidden" name="Change.RouteStopId" value="@stop.Id" /><button class="btn-secondary" type="submit" aria-label="Move @stop.Name up">Move up</button></form>
+                }
+                @if (stop.SequenceOrder < Model.Route.Stops.Count)
+                {
+                    <form method="post" asp-page-handler="MoveDown" class="admin-inline"><input type="hidden" name="Change.RouteStopId" value="@stop.Id" /><button class="btn-secondary" type="submit" aria-label="Move @stop.Name down">Move down</button></form>
+                }
+                <form method="post" asp-page-handler="Remove" class="admin-inline" onsubmit="return confirm('Remove this stop from the route?');"><input type="hidden" name="Change.RouteStopId" value="@stop.Id" /><button class="btn-danger" type="submit">Remove</button></form>
+            }
+            else { <span>Order locked</span> }
+            </td></tr>
+        }
+        @if (Model.Route.Stops.Count == 0) { <tr><td colspan="3">No stops yet.</td></tr> }
+        </tbody>
+    </table></div>
+    <form method="post" asp-page-handler="Add" class="hopon-form staff-form">
+        <label asp-for="Addition.StopId">Append stop</label>
+        <select asp-for="Addition.StopId" asp-items="Model.StopItems"><option value="">Select a stop</option></select>
+        <p><button type="submit" class="btn-primary">Add stop</button> <a asp-page="/Admin/Stops/Edit">Create a stop</a></p>
+    </form>
+}
