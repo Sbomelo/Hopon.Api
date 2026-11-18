@@ -19,7 +19,7 @@ namespace Hopon.Api.Services
         public async Task<MyTripsResponseDto> GetMyTripsAsync(int userId)
         {
             var tickets = await _context.Tickets
-                                        .Where(t => t.UserId == userId && t.IsActive)
+                                        .Where(t => t.UserId == userId)
                                         .Include(t => t.DestinationTripStop).ThenInclude(ts => ts!.Stop)
                                         .Include(t => t.Trip)
                                             .ThenInclude(trip => trip.BusRoute)
@@ -51,7 +51,7 @@ namespace Hopon.Api.Services
                     EstimatedArrival = estimatedArrival,
                     IsEstimate = isEstimate,
                     Status = trip.Status.ToString(),
-                    IsLive = TripStatusRules.IsTrackingActive(trip.Status)
+                    IsLive = ticket.IsActive && TripStatusRules.IsTrackingActive(trip.Status)
                 };
 
                 if (dto.IsLive)
