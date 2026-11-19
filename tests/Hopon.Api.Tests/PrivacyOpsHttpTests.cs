@@ -15,6 +15,28 @@ namespace Hopon.Api.Tests;
 public class PrivacyOpsHttpTests
 {
     [Fact]
+    public async Task Passenger_reads_are_audited_only_after_access_is_granted()
+    {
+        using var app = new StaffApplication();
+        using var client = app.NewClient();
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<HoponDbContext>();
+        db.Tickets.Add(new Ticket { UserId = 1, TripId = 101, TicketReference = "AUDIT" });
+        await db.SaveChangesAsync();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer",
+            scope.ServiceProvider.GetRequiredService<IJwtTokenService>().GenerateToken((await db.Users.FindAsync(1))!).Token);
+        foreach (var endpoint in new[] { "/api/trips/101/map-data", "/api/trips/101/history", "/api/notifications/my" })
+            for (var i = 0; i < 2; i++) Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(endpoint)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/trips/102/map-data")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/trips/102/history")).StatusCode);
+        var logs = await db.AccessAuditLogs.ToListAsync();
+        Assert.Equal(3, logs.Count);
+        Assert.All(logs, x => Assert.Equal(1, x.UserId));
+        Assert.DoesNotContain(logs, x => x.TripId == 102);
+        Assert.Contains(logs, x => x.Action == AccessAction.ViewedNotifications && x.TripId == null);
+    }
+
+    [Fact]
     public async Task Driver_api_returns_429_and_400_and_does_not_persist_bad_fixes()
     {
         using var app = new StaffApplication();
@@ -29,4 +51,37 @@ public class PrivacyOpsHttpTests
         Assert.Single(await db.LocationUpdates.ToListAsync());
     }
 
+    [Fact]
+    public async Task Admin_pages_require_staff_role_and_dry_run_cannot_enable_retention()
+    {
+        using var app = new StaffApplication();
+        using var client = app.NewClient();
+        foreach (var page in new[] { "/Admin/Audit", "/Admin/Retention" })
+            Assert.Equal(HttpStatusCode.Redirect, (await client.GetAsync(page)).StatusCode);
+        await Post(client, "/Staff/Login", "/Staff/Login", ("Input.Role", "Admin"), ("Input.Username", "admin-test"), ("Input.Password", StaffApplication.Password));
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<HoponDbContext>();
+        var now = app.Clock.GetUtcNow().UtcDateTime;
+        db.AccessAuditLogs.AddRange(Enumerable.Range(0, 55).Select(i => new AccessAuditLog { UserId = 1, TripId = 101,
+            Action = AccessAction.ViewedMap, CreatedAt = now.AddSeconds(-i) }));
+        db.AccessAuditLogs.Add(new AccessAuditLog { UserId = 2, TripId = 102, Action = AccessAction.ViewedHistory, CreatedAt = now });
+        await db.SaveChangesAsync();
+        var html = await client.GetStringAsync("/Admin/Audit?UserId=1&TripId=101&ActionFilter=ViewedMap&PageNumber=2");
+        Assert.Contains("Page 2 of 2", html);
+        Assert.Equal(5, Regex.Matches(html, "<tr><td>").Count);
+        Assert.DoesNotContain("ViewedHistory</td>", html);
+        Assert.Equal(HttpStatusCode.Redirect, (await Post(client, "/Admin/Retention", "/Admin/Retention")).StatusCode);
+        Assert.Contains("Retention is disabled", await client.GetStringAsync("/Admin/Retention"));
+        Assert.Equal(56, await db.AccessAuditLogs.CountAsync());
+    }
+
+    private static async Task<HttpResponseMessage> Post(HttpClient client, string url, string page, params (string Key, string Value)[] values)
+    {
+        var html = await client.GetStringAsync(page);
+        var token = Regex.Match(html, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"");
+        Assert.True(token.Success);
+        var fields = values.ToDictionary(x => x.Key, x => x.Value);
+        fields["__RequestVerificationToken"] = WebUtility.HtmlDecode(token.Groups[1].Value);
+        return await client.PostAsync(url, new FormUrlEncodedContent(fields));
+    }
 }

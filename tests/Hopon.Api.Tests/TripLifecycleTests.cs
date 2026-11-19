@@ -54,7 +54,6 @@ public class TripLifecycleTests
     {
         await using var fixture = await Fixture.CreateAsync(from);
         var trip = fixture.Trip;
-        var before = DateTime.UtcNow;
         var result = to switch
         {
             TripStatus.InProgress when from == TripStatus.Delayed => await fixture.Service.ResumeFromDelayAsync(trip),
@@ -83,11 +82,11 @@ public class TripLifecycleTests
         Assert.Equal(to, trip.Status);
         Assert.Equal(to.ToString(), Assert.Single(fixture.Hub.Calls).Payload.Status);
         if (from == TripStatus.Scheduled && to == TripStatus.InProgress)
-            Assert.InRange(trip.ActualDeparture!.Value, before, DateTime.UtcNow);
+            Assert.Equal(fixture.Clock.GetUtcNow().UtcDateTime, trip.ActualDeparture);
         else
             Assert.Equal(Departure, trip.ActualDeparture);
         if (to == TripStatus.Completed)
-            Assert.InRange(trip.ActualArrival!.Value, before, DateTime.UtcNow);
+            Assert.Equal(fixture.Clock.GetUtcNow().UtcDateTime, trip.ActualArrival);
         else
             Assert.Null(trip.ActualArrival);
     }
@@ -288,6 +287,7 @@ public class TripLifecycleTests
             BusRoute = new BusRoute { Name = "Lifecycle route" }, ActualDeparture = Departure };
         public HubSpy Hub { get; } = new();
         public FakeSmsSender Sender { get; } = new();
+        public FakeTimeProvider Clock { get; } = new(HoponWebApplicationFactory.TestNow);
         public TripLifecycleService Service { get; }
 
         private Fixture(TestDb database, bool cancellationSms)
@@ -295,9 +295,9 @@ public class TripLifecycleTests
             _database = database;
             var notifications = new NotificationService(Db,
                 new PassengerNotificationWriter(Db, NullLogger<PassengerNotificationWriter>.Instance),
-                TimeProvider.System, Sender, Options.Create(new NotificationOptions {
+                Clock, Sender, Options.Create(new NotificationOptions {
                     SmsEnabled = true, SmsTypes = cancellationSms ? ["Cancellation"] : [] }));
-            Service = new TripLifecycleService(Db, NullLogger<TripLifecycleService>.Instance, Hub, notifications, new LocationThrottle(TimeProvider.System));
+            Service = new TripLifecycleService(Db, NullLogger<TripLifecycleService>.Instance, Hub, notifications, new LocationThrottle(Clock), Clock);
         }
 
         public static async Task<Fixture> CreateAsync(TripStatus status, bool cancellationSms = false)

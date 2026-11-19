@@ -3,6 +3,7 @@ using Hopon.Api.Models;
 using Hopon.Api.Models.Enums;
 using Hopon.Api.Services;
 using Xunit;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Hopon.Api.Tests;
 
@@ -27,7 +28,7 @@ public class AdminNotificationLogTests
             new NotificationLog { User = user, Type = NotificationType.Delay, Channel = NotificationChannel.Sms, Status = NotificationStatus.Failed },
             new NotificationLog { UserId = 1, Trip = trip, Type = NotificationType.Delay, Channel = NotificationChannel.Sms, Status = NotificationStatus.Failed });
         await db.SaveChangesAsync();
-        var service = new AdminConsoleService(db, TimeProvider.System);
+        var service = new AdminConsoleService(db, new FakeTimeProvider());
         var filter = new NotificationLogFilter { TripId = trip.Id, Passenger = " passenger ", Type = NotificationType.Delay,
             Channel = NotificationChannel.Sms, Status = NotificationStatus.Failed };
         var first = await service.GetNotificationsAsync(filter);
@@ -58,7 +59,7 @@ public class AdminNotificationLogTests
             new NotificationLog { UserId = 1, Type = NotificationType.Delay, Channel = NotificationChannel.Sms, Status = NotificationStatus.Failed },
             new NotificationLog { UserId = 1, Type = NotificationType.Arrival, Channel = NotificationChannel.InApp, Status = NotificationStatus.Pending });
         await db.SaveChangesAsync();
-        var service = new AdminConsoleService(db, TimeProvider.System);
+        var service = new AdminConsoleService(db, new FakeTimeProvider());
         Assert.Single((await service.GetNotificationsAsync(new() { Type = NotificationType.Arrival })).Items);
         Assert.Single((await service.GetNotificationsAsync(new() { Channel = NotificationChannel.Sms })).Items);
         Assert.Single((await service.GetNotificationsAsync(new() { Status = NotificationStatus.Pending })).Items);

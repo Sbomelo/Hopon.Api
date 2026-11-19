@@ -8,6 +8,25 @@ Companion to `AGENTS.md` (read that first). This file is the **source of truth f
 
 Task 0 audit: **2026-11-16**, covering both repositories (`backend` = Hopon.Api; `frontend` = hopon-passenger). This handoff is copied into both repositories because the workspace-level `docs` directory is outside Git. API implementation is distinguished from usable UI below.
 
+**Task 13 — Automated tests and CI (2026-11-18)**
+- [x] Shared SQLite in-memory test host installs a recording SMS sender, fixed service clock and test JWT configuration. Hosted workers are driven explicitly in their own tests.
+- [x] Extended xUnit coverage for ETA, tracking eligibility, trip access, boarding and ticket issuance. The OTP-to-tracking integration test checks passenger isolation and SignalR access over an in-process WebSocket with the .NET client.
+- [x] Added separate GitHub Actions workflows for the backend and frontend repositories, README status badges and local test commands. The .NET 8-compatible solution runs both backend projects from the repository root.
+- [x] Verified 473 xUnit cases (23 new), five driver JavaScript tests and seven frontend tests. The Ubuntu xUnit run met the 60-second target. The Windows Release run was slower. Frontend lint and build passed. No migration.
+
+**Task 12 — Demo mode (2026-11-18)**
+- [x] Seed or reset a live N3 trip and yesterday’s completed trip using three fake passenger accounts, a 60-seat coach, the existing driver and UTC schedules. Reset is transactional and protects unrelated trips, tickets and logs.
+- [x] Admin Simulator and the passenger map share a 230-point OSRM route. The simulator supports manual moves, arrival/departure, status changes and three-second auto-drive through the driver lifecycle service. The passenger map shows the recent GPS trail.
+- [x] Clean build, 449 backend tests, five driver JavaScript tests, seven passenger tests, lint and production build passed. Verified empty SQL Server migration, two seed runs and reset. Headless Edge covered OTP → live map, manual move, auto-drive on/off, live delay/resume, arrival/departure, completion, notifications and past-trip history.
+- [x] Both READMEs link to the demo run instructions and 60-second walkthrough. No migration added. Before public release, sanitise the historical seed phone numbers and driver password hash (section B.18).
+
+**Task 11 — Location throttling, audit and retention (2026-11-18)**
+- [x] Default-off ten-second driver auto-sharing with indicator/stop/cleanup; injectable-clock singleton three-second throttle, 15-second persistence, accepted-fix broadcasts and 250 km/h plausibility validation. API/Razor handle friendly throttled/rejected outcomes.
+- [x] Privacy-limited audit entity/migration, rolling five-minute read/join deduplication and failure-isolated writes; admin read-only filtered/paged `/Admin/Audit`.
+- [x] Daily 02:00 SAST retention worker with disabled Development/default, enabled Production, default dry run, batched deletes, unique identity anonymisation and contact removal. `/Admin/Retention` exposes in-memory summary and a dry-run-only action that respects disabled mode.
+- [x] Backend build zero warnings/errors; five driver JS tests and frontend lint/build passed. SQL migration applied/no pending model changes; eight admin page/theme/viewport checks and disabled dry-run POST passed. Hopon starts on 5101; temporary QA admin removed; demo records and real SMS untouched.
+- [x] All **443 backend tests** passed, including 25 new privacy cases; isolated scheduler fixture updated for the new throttle dependency (15 focused scheduler tests passed). Earlier Application Control blocks cleared on normal rebuild/retry, without policy changes; empty discovery was not treated as a pass. Delivered as three ordered backend commits/PRs: location → audit → retention (`task-11-privacy-ops`). See backend `docs/PRIVACY_OPS.md` for commands, migration, assumptions and optional device GPS acceptance. Task 12 untouched.
+
 **Task 10 — Admin console completion (2026-11-18)**
 - [x] 10a: Admin home and post-login landing page; SAST-day trip/ticket counts and rolling 24-hour Sent/Failed notification-attempt counts.
 - [x] 10b: Admin-only live monitor with latest GPS/age/stale highlighting/OSM, next Pending stop, final schedule-offset ETA and Details links. A no-store JSON handler and `wwwroot/js/monitor.js` refresh the table every 15 seconds without navigation; failures retain the last snapshot and retry.
@@ -186,7 +205,7 @@ Fix these as part of the tasks below (each is referenced there).
 8. Resolved inline in Task 1: RecordLocationAsync interface parameter names now match the implementation (latitude, longitude); behavior is unchanged.
 9. Resolved inline in Task 1: user seed dates match the existing snapshot, preventing migration churn.
 10. Resolved in Task 3b: configured CORS allowlist, validated typed JWT/CORS/OTP options, secrets/env setup documentation, Production HTTPS/HSTS/proxy support, and one token-service registration. Historical credential rotation remains owner action.
-11. Every GPS fix is written to `LocationUpdates` forever, and each driver POST triggers a DB write + broadcast. Needs a throttle and retention (Task 11).
+11. Implemented in Task 11: accepted fixes broadcast with three-second throttling, 15-second persistence and configurable retention. All 443 backend tests passed; deletion defaults to disabled/dry-run as documented above.
 12. Typos in DTO property names (`MyTripDto.ActualDepature`, `DriverTripDto.BusRegistraton`) — rename only together with frontend usages.
 13. Resolved in Task 0: removed unused Leaflet/add dependencies; README now describes MapLibre GL JS + OpenFreeMap.
 14. Task 1 adds staff authentication, driver ownership and bootstrap tests. Broader coverage remains Task 13.
@@ -272,19 +291,17 @@ Each task = one branch + one PR. Acceptance criteria are what "done" means.
 - [x] Trip creation generates TripStops; route-edit invariants and ticket revocation/reinstatement have service/HTTP/WebSocket coverage. All 418 backend tests, required build/lint, SQL migration/model checks and rendered admin checks passed. See section A and backend `docs/ADMIN_CONSOLE.md`.
 
 ### Phase 3 — Demo, privacy, quality, deploy
-**Task 11: Location throttling, audit, retention (POPIA)**
+**Task 11: Location throttling, audit, retention (POPIA) — complete**
+- [x] A/B/C implemented; 443 backend tests, five driver JS tests, frontend lint/build, SQL migration/model checks and eight admin theme/viewport checks passed. See section A and backend `docs/PRIVACY_OPS.md`.
 - Driver GPS: client posts every 5–10 s; server ignores fixes < 3 s apart for the same trip. Persist at most one fix per ~15 s but broadcast every fix. Prune `LocationUpdates` older than N days.
 - Audit log table for location/notification reads by passengers (UserId, TripId, Type, Timestamp). Keep it small.
 - `RetentionService` (BackgroundService, daily): 90 days after trip completion, delete location updates, notification logs, boarding logs; anonymise Users (name → "Deleted user", phone → hashed token) when they have no recent trips. Configurable days.
 
-**Task 12: Demo mode**
-- `DemoSeeder` runs in Development (or via `dotnet run -- --seed-demo`), idempotent, creates: route **Durban → Johannesburg**, stops Durban, Pietermaritzburg, Estcourt, Harrismith, Johannesburg Park Station with real GPS coordinates, a bus (reg + capacity), driver, a trip In Progress whose last known location is ≈2 h from Johannesburg (between Harrismith and Johannesburg), TripStops with realistic times and first stops marked Departed, tickets for the 3 seeded passengers with different destination stops.
-- Admin Simulator page (`/Admin/Simulator`): buttons "Move bus to next stop", "Trigger delay (with reason)", "Mark arrival at stop"; interpolates GPS along the route and posts it through the same service as the driver so passenger apps update live.
-- A `Reset demo` action. Document the one-command start in the README.
-- *Done when:* a fresh clone → migrations → run → the demo works end to end with no manual SQL.
+**Task 12: Demo mode — complete**
+- [x] From a fresh database, run migrations and `dotnet run -- --seed-demo`. Use `+27600000001` and open `/Admin/Simulator` in a second window. Repeat the pitch with `--reset-demo`. See **Run the demo** in the backend README.
 
-**Task 13: Automated tests**
-- xUnit project `Hopon.Api.Tests` using SQLite in-memory. Cover: `EtaCalculator`, `TripStatusRules`, OTP request/verify (rate limit, expiry, attempts), `TripAccessService`, `BoardingService`, `AdminTripService.IssueTicketAsync` (capacity, duplicate, seat taken), notification threshold logic, role separation (integration tests with `WebApplicationFactory`). Add a GitHub Actions workflow running build + tests + `npm run lint && npm run build`.
+**Task 13: Automated tests and CI**
+- [x] Completed the coverage gaps and added a CI workflow to each repository. See section A for coverage and verification.
 
 **Task 14: Deployment**
 - Azure App Service + Azure SQL. Serve the React build from the API (`wwwroot` or a separate static host) — pick the simpler, document why. Enable WebSockets for SignalR. Production CORS, secrets in App Service config, `dotnet ef database update` via a migration bundle in CI. HTTPS only. Health endpoint.

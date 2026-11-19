@@ -8,13 +8,8 @@ using Hopon.Api.Models;
 using Hopon.Api.Models.Enums;
 using Hopon.Api.Services;
 using Hopon.Api.Services.Interfaces;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xunit;
 
 namespace Hopon.Api.Tests;
@@ -185,59 +180,26 @@ public class StaffAuthenticationTests
     }
 }
 
-internal sealed class StaffApplication : WebApplicationFactory<Program>
+internal sealed class StaffApplication : HoponWebApplicationFactory
 {
-    public const string Password = "Test-only-password-123";
-    private readonly SqliteConnection connection = new("Data Source=:memory:");
-
     public StaffApplication()
     {
-        connection.Open();
-        using var db = new HoponDbContext(new DbContextOptionsBuilder<HoponDbContext>().UseSqlite(connection).Options);
-        db.Database.EnsureCreated();
-        var hash = BCrypt.Net.BCrypt.HashPassword(Password);
+        using var db = OpenDbContext();
+        db.AdminUsers.Add(new AdminUser { Username = "admin-test", PasswordHash = TestPasswordHash });
         db.Drivers.AddRange(
-            new Driver { Id = 101, FullName = "Driver One", Username = "driver-one", PasswordHash = hash },
-            new Driver { Id = 102, FullName = "Driver Two", Username = "driver-two", PasswordHash = hash });
+            new Driver { Id = 101, FullName = "Driver One", Username = "driver-one", PasswordHash = TestPasswordHash },
+            new Driver { Id = 102, FullName = "Driver Two", Username = "driver-two", PasswordHash = TestPasswordHash });
         for (var id = 101; id <= 102; id++)
         {
             var trip = new Trip
             {
                 Id = id, DriverId = id, Bus = new Bus { RegistrationNumber = "TEST-" + id },
                 BusRoute = new BusRoute { Name = id == 101 ? "First driver route" : "Second driver route" },
-                ScheduledDeparture = DateTime.UtcNow, ScheduledArrival = DateTime.UtcNow.AddHours(4)
+                ScheduledDeparture = TestNow.UtcDateTime, ScheduledArrival = TestNow.UtcDateTime.AddHours(4)
             };
             trip.TripStops.Add(new TripStop { Id = id, Stop = new Stop { Name = "Test stop " + id }, SequenceOrder = 1 });
             db.Trips.Add(trip);
         }
         db.SaveChanges();
-    }
-
-    public HttpClient NewClient() => CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-
-    protected override void ConfigureWebHost(IWebHostBuilder builder)
-    {
-        builder.UseEnvironment("Development");
-        builder.UseContentRoot(Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../")));
-        builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            ["Admin:Username"] = "admin-test", ["Admin:Password"] = Password,
-            ["Jwt:Key"] = "Test-only-signing-key-at-least-32-characters", ["Jwt:Issuer"] = "Hopon-tests",
-            ["Jwt:Audience"] = "Hopon-tests", ["Jwt:ExpiryHours"] = "1"
-        }));
-        builder.ConfigureServices(services =>
-        {
-            services.RemoveAll<Hopon.Api.Services.Sms.ISmsSender>();
-            services.AddSingleton<Hopon.Api.Services.Sms.ISmsSender>(new FakeSmsSender());
-            services.RemoveAll<HoponDbContext>();
-            services.RemoveAll<DbContextOptions<HoponDbContext>>();
-            services.AddDbContext<HoponDbContext>(options => options.UseSqlite(connection));
-        });
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        base.Dispose(disposing);
-        if (disposing) connection.Dispose();
     }
 }

@@ -1,6 +1,7 @@
 using System.Net;
 using Hopon.Api.Services.Sms;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 using Twilio.Clients;
 using Twilio.Http;
 using Xunit;
@@ -61,24 +62,28 @@ public class TwilioSmsSenderTests
     public async Task Cancellation_and_ten_second_timeout_return_failure()
     {
         var handler = new StubHandler { WaitForever = true };
-        using var http = new System.Net.Http.HttpClient(handler) { Timeout = TimeSpan.FromSeconds(10) };
-        var sender = Sender(http, false);
+        using var http = new System.Net.Http.HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
+        var clock = new FakeTimeProvider();
+        var sender = Sender(http, false, clock: clock);
         using var cancelled = new CancellationTokenSource();
         cancelled.Cancel();
         Assert.False((await sender.SendAsync("+27820000000", "Test", cancelled.Token)).Success);
         Assert.Null(handler.Body);
-        var start = System.Diagnostics.Stopwatch.StartNew();
-        Assert.False((await sender.SendAsync("+27820000000", "Test")).Success);
-        Assert.InRange(start.Elapsed.TotalSeconds, 9, 20);
+        var sending = sender.SendAsync("+27820000000", "Test");
+        clock.Advance(TimeSpan.FromSeconds(9));
+        Assert.False(sending.IsCompleted);
+        clock.Advance(TimeSpan.FromSeconds(1));
+        Assert.False((await sending).Success);
     }
 
-    private static TwilioSmsSender Sender(System.Net.Http.HttpClient http, bool serviceSender, CapturingLogger<TwilioSmsSender>? logger = null)
+    private static TwilioSmsSender Sender(System.Net.Http.HttpClient http, bool serviceSender,
+        CapturingLogger<TwilioSmsSender>? logger = null, TimeProvider? clock = null)
     {
         var client = new TwilioRestClient("ACtest", "test-token", httpClient: new SystemNetHttpClient(http)) { LogLevel = "none" };
         return new TwilioSmsSender(client, Options.Create(new TwilioOptions
         {
             FromNumber = "+27820000001", MessagingServiceSid = serviceSender ? "MGtest" : ""
-        }), logger ?? new CapturingLogger<TwilioSmsSender>());
+        }), logger ?? new CapturingLogger<TwilioSmsSender>(), clock ?? new FakeTimeProvider());
     }
 
     private sealed class StubHandler : HttpMessageHandler

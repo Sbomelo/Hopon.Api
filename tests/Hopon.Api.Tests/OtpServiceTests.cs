@@ -3,6 +3,7 @@ using Hopon.Api.Models;
 using Hopon.Api.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
 namespace Hopon.Api.Tests;
@@ -10,6 +11,7 @@ namespace Hopon.Api.Tests;
 public class OtpServiceTests
 {
     private const string Phone = "+27781234567";
+    private readonly FakeTimeProvider clock = new(HoponWebApplicationFactory.TestNow);
 
     [Fact]
     public async Task New_request_invalidates_all_older_unused_codes_for_only_that_phone()
@@ -50,8 +52,7 @@ public class OtpServiceTests
         var service = await CreateServiceAsync(db);
         var request = await service.RequestOtpAsync(Phone);
         var otp = await db.OtpRequests.SingleAsync();
-        otp.ExpiresAt = DateTime.UtcNow.AddSeconds(-1);
-        await db.SaveChangesAsync();
+        clock.Advance(TimeSpan.FromMinutes(10));
 
         var result = await service.VerifyOtpAsync(Phone, request.DevOnlyCode!);
 
@@ -102,7 +103,7 @@ public class OtpServiceTests
         Assert.Equal(1, await db.OtpRequests.CountAsync(o => !o.IsUsed));
 
         var oldest = await db.OtpRequests.OrderBy(o => o.CreatedAt).FirstAsync();
-        oldest.CreatedAt = DateTime.UtcNow.AddMinutes(-11);
+        oldest.CreatedAt = clock.GetUtcNow().UtcDateTime.AddMinutes(-11);
         await db.SaveChangesAsync();
         Assert.True((await service.RequestOtpAsync(Phone)).Success);
         Assert.Equal(4, await db.OtpRequests.CountAsync());
@@ -141,7 +142,7 @@ public class OtpServiceTests
         database.Context.Users.Add(new User { PhoneNumber = Phone, FullName = "OTP test passenger" });
         await database.Context.SaveChangesAsync();
         var sender = new FakeSmsSender();
-        var service = new OtpService(database.Context, sender, Options.Create(new OtpOptions { ExposeCodeInResponse = expose }));
+        var service = new OtpService(database.Context, sender, Options.Create(new OtpOptions { ExposeCodeInResponse = expose }), clock);
         var request = await service.RequestOtpAsync(Phone);
         Assert.True(request.Success);
         Assert.Equal(expose, request.DevOnlyCode is not null);
@@ -160,7 +161,7 @@ public class OtpServiceTests
         database.Context.Users.Add(new User { PhoneNumber = Phone, FullName = "OTP test passenger" });
         await database.Context.SaveChangesAsync();
         var sender = new FakeSmsSender();
-        var service = new OtpService(database.Context, sender, Options.Create(new OtpOptions { ExposeCodeInResponse = true }));
+        var service = new OtpService(database.Context, sender, Options.Create(new OtpOptions { ExposeCodeInResponse = true }), clock);
         var previous = await service.RequestOtpAsync(Phone);
         sender.Result = new(false, "test failure", null);
         for (var i = 0; i < 4; i++)
@@ -180,16 +181,16 @@ public class OtpServiceTests
     [Fact]
     public void Code_exposure_defaults_to_false() => Assert.False(new OtpOptions().ExposeCodeInResponse);
 
-    private static OtpRequest OldRequest(string phone, string hash) => new()
+    private OtpRequest OldRequest(string phone, string hash) => new()
     {
         PhoneNumber = phone, OtpCodeHash = hash,
-        CreatedAt = DateTime.UtcNow.AddMinutes(-2), ExpiresAt = DateTime.UtcNow.AddMinutes(8)
+        CreatedAt = clock.GetUtcNow().UtcDateTime.AddMinutes(-2), ExpiresAt = clock.GetUtcNow().UtcDateTime.AddMinutes(8)
     };
 
-    private static async Task<OtpService> CreateServiceAsync(HoponDbContext db)
+    private async Task<OtpService> CreateServiceAsync(HoponDbContext db)
     {
         db.Users.Add(new User { PhoneNumber = Phone, FullName = "OTP test passenger" });
         await db.SaveChangesAsync();
-        return new OtpService(db, new FakeSmsSender(), Options.Create(new OtpOptions { ExposeCodeInResponse = true }));
+        return new OtpService(db, new FakeSmsSender(), Options.Create(new OtpOptions { ExposeCodeInResponse = true }), clock);
     }
 }

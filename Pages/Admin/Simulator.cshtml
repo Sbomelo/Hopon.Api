@@ -1,0 +1,34 @@
+@page
+@model Hopon.Api.Pages.Admin.SimulatorModel
+@{
+    ViewData["Title"] = "Trip simulator";
+}
+<h1>Trip simulator</h1>
+<form method="get" class="hopon-form simulator-picker">
+    <label for="tripId">Active trip</label>
+    <select name="tripId" id="tripId">
+        @foreach (var t in Model.Choices)
+        {
+            <option value="@t.Id" selected="@(Model.Trip?.Id == t.Id)">@(t.IsDemo ? "Demo · " : "")@t.Route · #@t.Id · @t.Status</option>
+        }
+    </select>
+    <button class="btn-secondary" disabled="@(Model.Choices.Count == 0)">Open trip</button>
+</form>
+@if (Model.Trip != null)
+{
+    <label class="sim-auto"><input id="sim-auto" type="checkbox" /> Auto-drive · 110 km/h</label>
+    <p id="sim-message" role="status"></p>
+    <div id="sim-panel"><partial name="_SimulatorPanel" model="Model" /></div>
+}
+else
+{
+    <p>No active trips. Run <code>dotnet run -- --seed-demo</code> to set up the demo.</p>
+}
+<details>
+    <summary>Demo controls and clock</summary>
+    <p>Auto-drive advances about 92 metres every three seconds while this page is open. Move bus fast-forwards 10 km. Jump marks the next stop as arrived and sends the usual passenger alerts. Wait at least three seconds between GPS actions.</p>
+    <p>The Development setting <code>Demo:ClockOffsetMinutes</code> advances the notification scheduler. Restart Hopon after changing it. The timetable, GPS clock and passenger ETA keep real UTC time.</p>
+</details>
+@section Scripts {
+    <script src="~/js/simulator.js" asp-append-version="true"></script>
+}
