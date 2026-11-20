@@ -153,14 +153,24 @@ public sealed class DemoSeeder(HoponDbContext db, TimeProvider clock)
     {
         var ids = passengers.Select(p => p.Id).ToArray();
         var tickets = db.Tickets.Where(t => t.TripId == trip.Id);
-        if (await tickets.AnyAsync(t => !ids.Contains(t.UserId) || !references.Contains(t.TicketReference))
-            || await db.NotificationLogs.AnyAsync(n => n.TripId == trip.Id && !ids.Contains(n.UserId))
-            || await db.AccessAuditLogs.AnyAsync(a => a.TripId == trip.Id && !ids.Contains(a.UserId)))
-            throw new InvalidOperationException("This demo trip contains non-demo passenger records. Reset cancelled.");
+        var seededTickets = tickets.Where(t => references.Contains(t.TicketReference));
+        if (await seededTickets.AnyAsync(t => !ids.Contains(t.UserId)))
+            throw new InvalidOperationException("A reserved demo ticket belongs to a non-demo passenger. Reset cancelled.");
 
-        await db.AccessAuditLogs.Where(a => a.TripId == trip.Id).ExecuteDeleteAsync();
-        await db.NotificationLogs.Where(n => n.TripId == trip.Id).ExecuteDeleteAsync();
-        await tickets.ExecuteDeleteAsync(); // Cascades to boarding logs before the restricted stop references.
-        await db.Trips.Where(t => t.Id == trip.Id).ExecuteDeleteAsync(); // Cascades to trip stops and GPS.
+        var seededUserIds = await seededTickets.Select(t => t.UserId).ToArrayAsync();
+        var notifications = db.NotificationLogs.Where(n => n.TripId == trip.Id);
+        var audits = db.AccessAuditLogs.Where(a => a.TripId == trip.Id);
+        var keepTrip = await tickets.AnyAsync(t => !references.Contains(t.TicketReference))
+            || await notifications.AnyAsync(n => !seededUserIds.Contains(n.UserId))
+            || await audits.AnyAsync(a => !seededUserIds.Contains(a.UserId));
+        if (keepTrip && TripStatusRules.IsTrackingActive(trip.Status))
+            throw new InvalidOperationException("This demo trip is still active and contains non-demo passenger records. Finish the trip before resetting.");
+
+        await audits.Where(a => seededUserIds.Contains(a.UserId)).ExecuteDeleteAsync();
+        await notifications.Where(n => seededUserIds.Contains(n.UserId)).ExecuteDeleteAsync();
+        await seededTickets.ExecuteDeleteAsync(); // Cascades to boarding logs before the restricted stop references.
+        // A shared trip still provides history and its stop timeline to the other ticket holders.
+        if (!keepTrip)
+            await db.Trips.Where(t => t.Id == trip.Id).ExecuteDeleteAsync();
     }
 }

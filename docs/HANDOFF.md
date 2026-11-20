@@ -19,6 +19,7 @@ Task 0 audit: **2026-11-16**, covering both repositories (`backend` = Hopon.Api;
 - [x] Admin Simulator and the passenger map share a 230-point OSRM route. The simulator supports manual moves, arrival/departure, status changes and three-second auto-drive through the driver lifecycle service. The passenger map shows the recent GPS trail.
 - [x] Clean build, 449 backend tests, five driver JavaScript tests, seven passenger tests, lint and production build passed. Verified empty SQL Server migration, two seed runs and reset. Headless Edge covered OTP → live map, manual move, auto-drive on/off, live delay/resume, arrival/departure, completion, notifications and past-trip history.
 - [x] Both READMEs link to the demo run instructions and 60-second walkthrough. No migration added. Before public release, sanitise the historical seed phone numbers and driver password hash (section B.18).
+- [x] Reset can replay a completed demo trip that also carried other passengers. It removes the seeded passengers' old records and keeps the shared trip history and other passenger records. The active shared-trip guard still applies.
 
 **Task 11 — Location throttling, audit and retention (2026-11-18)**
 - [x] Default-off ten-second driver auto-sharing with indicator/stop/cleanup; injectable-clock singleton three-second throttle, 15-second persistence, accepted-fix broadcasts and 250 km/h plausibility validation. API/Razor handle friendly throttled/rejected outcomes.

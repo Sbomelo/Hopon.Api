@@ -118,19 +118,60 @@ public class DemoModeTests
     }
 
     [Fact]
-    public async Task Reset_rolls_back_if_an_operator_issued_a_ticket_on_the_demo_trip()
+    public async Task Reset_rolls_back_if_an_active_demo_trip_has_an_operator_ticket()
     {
         await using var store = await TestDb.CreateAsync();
         var db = store.Context;
         var seed = new DemoSeeder(db, new FakeTimeProvider(Now));
         await seed.SeedAsync();
-        var past = await db.Trips.SingleAsync(t => t.Status == TripStatus.Completed);
-        db.Tickets.Add(new Ticket { Trip = past, UserId = 1, TicketReference = "KEEP" });
+        var active = await db.Trips.SingleAsync(t => t.Status == TripStatus.InProgress);
+        db.Tickets.Add(new Ticket { Trip = active, UserId = 1, TicketReference = "KEEP" });
         await db.SaveChangesAsync();
         var tripIds = await db.Trips.OrderBy(t => t.Id).Select(t => t.Id).ToArrayAsync();
         await Assert.ThrowsAsync<InvalidOperationException>(() => seed.SeedAsync(reset: true));
         db.ChangeTracker.Clear();
         Assert.Equal(tripIds, await db.Trips.OrderBy(t => t.Id).Select(t => t.Id).ToArrayAsync());
+        Assert.Equal(7, await db.Tickets.CountAsync());
+    }
+
+    [Fact]
+    public async Task Reset_keeps_finished_shared_trip_history_and_issues_fresh_demo_tickets()
+    {
+        await using var store = await TestDb.CreateAsync();
+        var db = store.Context;
+        var seed = new DemoSeeder(db, new FakeTimeProvider(Now));
+        await seed.SeedAsync();
+        var trip = await db.Trips.SingleAsync(t => t.Status == TripStatus.InProgress);
+        trip.Status = TripStatus.Completed;
+        trip.ActualArrival = Now.UtcDateTime;
+        var seeded = await db.Tickets.SingleAsync(t => t.TicketReference == DemoSeeder.LiveTicket);
+        seeded.BoardingLogs.Add(new BoardingLog());
+        var operatorTicket = new Ticket { TripId = trip.Id, UserId = 1, TicketReference = "OPERATOR-KEEP" };
+        operatorTicket.BoardingLogs.Add(new BoardingLog());
+        db.Tickets.Add(operatorTicket);
+        db.NotificationLogs.AddRange(
+            new NotificationLog { TripId = trip.Id, UserId = operatorTicket.UserId },
+            new NotificationLog { TripId = trip.Id, UserId = seeded.UserId });
+        db.AccessAuditLogs.AddRange(
+            new AccessAuditLog { TripId = trip.Id, UserId = operatorTicket.UserId },
+            new AccessAuditLog { TripId = trip.Id, UserId = seeded.UserId });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        await seed.SeedAsync(reset: true);
+
+        var retained = await db.Trips.SingleAsync(t => t.Id == trip.Id);
+        Assert.Equal(TripStatus.Completed, retained.Status);
+        Assert.Equal(Now.UtcDateTime, retained.ActualArrival);
+        Assert.Equal(operatorTicket.Id, (await db.Tickets.SingleAsync(t => t.TripId == trip.Id)).Id);
+        Assert.Equal(operatorTicket.Id, (await db.BoardingLogs.SingleAsync(b => b.Ticket.TripId == trip.Id)).TicketId);
+        Assert.Equal(operatorTicket.UserId, (await db.NotificationLogs.SingleAsync(n => n.TripId == trip.Id)).UserId);
+        Assert.Equal(operatorTicket.UserId, (await db.AccessAuditLogs.SingleAsync(a => a.TripId == trip.Id)).UserId);
+        Assert.Equal(5, await db.TripStops.CountAsync(s => s.TripId == trip.Id));
+        Assert.Equal(5, await db.LocationUpdates.CountAsync(l => l.TripId == trip.Id));
+        var fresh = await db.Trips.SingleAsync(t => t.Status == TripStatus.InProgress);
+        Assert.Equal(fresh.Id, (await db.Tickets.SingleAsync(t => t.TicketReference == DemoSeeder.LiveTicket)).TripId);
+        Assert.Equal(3, await db.Trips.CountAsync());
         Assert.Equal(7, await db.Tickets.CountAsync());
     }
 

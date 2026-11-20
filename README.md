@@ -95,7 +95,7 @@ Open the passenger view and request a code for **+27600000001**. Enter the six d
 
 Open the simulator in a second window, sign in as Admin and select the demo trip. **Auto-drive** moves about 92 metres every three seconds. **Move bus +10 km** fast-forwards along the N3. **Jump to next stop** sends a fix and records arrival. **Depart stop** and **Complete trip** finish the journey. Each accepted fix reaches the passenger map via SignalR. [Admin simulator](http://localhost:5101/Admin/Simulator)
 
-For another pitch, stop the server and run `dotnet run -- --reset-demo`, then `dotnet run`. This restarts the schedule relative to now. Ordinary seeding preserves progress. Reset recognises trips by the demo route, coach and reserved ticket references. It cancels the transaction if another passenger has records on a demo trip. To seed on Development startup, set `Demo:SeedOnStartup` to `true`.
+For another pitch, stop the server and run `dotnet run -- --reset-demo`, then `dotnet run`. This restarts the schedule relative to now. Ordinary seeding preserves progress. Reset recognises trips by the demo route, coach and reserved ticket references. When a finished trip has other passenger records, reset keeps the trip and its shared history and replaces the seeded passenger records. Finish any active demo trip with other passenger records before resetting. To seed on Development startup, set `Demo:SeedOnStartup` to `true`.
 
 ### What to show in 60 seconds
 
