@@ -230,6 +230,78 @@ table.hopon-table {
 .hopon-nav { display: flex; flex-wrap: wrap; gap: 0.75rem 1rem; }
 .hopon-nav a { margin-right: 0; }
 .hopon-brand { color: var(--color-interactive); }
+.hopon-header--admin {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    height: 4.5rem;
+    padding-block: 0;
+}
+
+.hopon-header--admin .hopon-brand {
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.hopon-header--admin .staff-account {
+    justify-self: end;
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: nowrap;
+}
+
+.hopon-header--admin .staff-account span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hopon-header--admin .staff-account form { flex: none; }
+.hopon-header--admin .theme-toggle { width: 8.75rem; padding-inline: .4rem; white-space: nowrap; }
+
+.admin-shell {
+    display: grid;
+    grid-template-columns: 13.5rem minmax(0, 1fr);
+    min-height: calc(100dvh - 4.5rem);
+}
+
+.admin-sidebar { background: var(--color-surface); border-inline-end: 1px solid var(--color-border); }
+.admin-sidebar .admin-navigation { position: sticky; top: 4.5rem; max-height: calc(100dvh - 4.5rem); overflow-y: auto; }
+.admin-main { width: 100%; min-width: 0; }
+.admin-nav-disclosure { display: none; }
+.admin-navigation { display: grid; gap: 1.25rem; padding: 1rem; }
+.admin-navigation p { margin: 0 0 .3rem; padding-inline: .65rem; font-size: .78rem; font-weight: 700; }
+.admin-navigation ul { display: grid; gap: .125rem; list-style: none; margin: 0; padding: 0; }
+.admin-navigation a {
+    display: block;
+    padding: .5rem .65rem;
+    border-inline-start: 3px solid transparent;
+    border-radius: 6px;
+    color: var(--color-text);
+    text-decoration: none;
+}
+
+.admin-navigation a:hover, .admin-navigation a[aria-current] { background: var(--color-surface-alt); }
+.admin-navigation a[aria-current] { border-inline-start-color: var(--color-interactive); font-weight: 700; }
+.admin-navigation a:focus-visible, .admin-nav-disclosure summary:focus-visible {
+    outline: 2px solid var(--color-interactive);
+    outline-offset: 2px;
+}
+
+@media (max-width: 850px) {
+    .admin-shell { display: block; }
+    .admin-sidebar { display: none; }
+    .admin-nav-disclosure { display: block; background: var(--color-surface); border-bottom: 1px solid var(--color-border); }
+    .admin-nav-disclosure summary { padding: .8rem 1rem; cursor: pointer; font-weight: 700; }
+    .admin-nav-disclosure .admin-navigation { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-top: .3rem; }
+    .admin-main { padding-inline: 1rem; }
+}
+
+@media (max-width: 560px) {
+    .hopon-header--admin { padding-inline: .5rem; gap: .5rem; }
+    .hopon-header--admin .hopon-brand { font-size: 1rem; }
+    .hopon-header--admin .staff-account { gap: .375rem; font-size: .8rem; }
+    .hopon-header--admin .staff-account button { padding-inline: .5rem; font-size: .8rem; }
+    .hopon-header--admin .theme-toggle { width: 6.25rem; font-size: .75rem; }
+}
+
 .hopon-main a:not([class]) { color: var(--color-interactive); }
 .admin-inline { display: inline-block; margin: 0.25rem; }
 td.text-error { font-weight: 700; }

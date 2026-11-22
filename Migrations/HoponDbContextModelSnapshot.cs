@@ -328,6 +328,7 @@ namespace Hopon.Api.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<int>("AttemptCount")
+                        .IsConcurrencyToken()
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
@@ -337,6 +338,7 @@ namespace Hopon.Api.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<bool>("IsUsed")
+                        .IsConcurrencyToken()
                         .HasColumnType("bit");
 
                     b.Property<string>("OtpCodeHash")
@@ -344,12 +346,17 @@ namespace Hopon.Api.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
+                    b.Property<int?>("PhoneChangeUserId")
+                        .HasColumnType("int");
+
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PhoneChangeUserId", "CreatedAt");
 
                     b.HasIndex("PhoneNumber", "CreatedAt");
 
@@ -565,6 +572,7 @@ namespace Hopon.Api.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("PhoneNumber")
+                        .IsConcurrencyToken()
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 

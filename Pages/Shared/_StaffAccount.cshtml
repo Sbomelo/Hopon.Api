@@ -6,7 +6,7 @@
 @if (staff?.Identity?.IsAuthenticated == true)
 {
     <div class="staff-account">
-        <span>@staff.Identity.Name</span>
+        <span title="@staff.Identity.Name">@staff.Identity.Name</span>
         <form method="post" asp-page="/Staff/Logout">
             <button type="submit" class="btn-primary">Logout</button>
         </form>
