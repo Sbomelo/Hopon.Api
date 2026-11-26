@@ -138,6 +138,20 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
             }
 
             return Task.CompletedTask;
+        },
+        OnTokenValidated = async context =>
+        {
+            var passenger = context.Principal!;
+            if (!passenger.IsInRole("Passenger")) return;
+
+            var phoneNumber = passenger.FindFirstValue("phoneNumber");
+            var db = context.HttpContext.RequestServices.GetRequiredService<HoponDbContext>();
+            if (!int.TryParse(passenger.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ||
+                !await db.Users.AnyAsync(user => user.Id == userId && user.IsActive && user.PhoneNumber == phoneNumber,
+                    context.HttpContext.RequestAborted))
+            {
+                context.Fail("The passenger session is no longer current.");
+            }
         }
     };
 });

@@ -38,6 +38,7 @@ public class HoponDbContext : DbContext
         modelBuilder.Entity<User>()
                 .HasIndex(u => u.PhoneNumber)
                 .IsUnique();
+        modelBuilder.Entity<User>().Property(u => u.PhoneNumber).IsConcurrencyToken();
         
 
         //Emergency Contact
@@ -223,6 +224,9 @@ public class HoponDbContext : DbContext
         modelBuilder.Entity<OtpRequest>(entity =>
         {
                 entity.HasIndex(o => new {o.PhoneNumber, o.CreatedAt});
+                entity.HasIndex(o => new { o.PhoneChangeUserId, o.CreatedAt });
+                entity.Property(o => o.IsUsed).IsConcurrencyToken();
+                entity.Property(o => o.AttemptCount).IsConcurrencyToken();
                 entity.Property(o => o.PhoneNumber).HasMaxLength(20).IsRequired();
                 entity.Property( o => o.OtpCodeHash).HasMaxLength(255).IsRequired();
         });

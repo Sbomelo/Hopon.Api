@@ -1,0 +1,43 @@
+@{
+    var currentPage = ViewContext.RouteData.Values["page"] as string ?? string.Empty;
+    var groups = new[]
+    {
+        (Heading: "Operations", Links: new (string Label, string Page)[]
+        {
+            ("Home", "/Admin/Index"),
+            ("Live monitor", "/Admin/Monitor"),
+            ("Simulator", "/Admin/Simulator"),
+            ("Trips", "/Admin/Trips/Index"),
+            ("Notifications", "/Admin/Notifications")
+        }),
+        (Heading: "Fleet and routes", Links: new (string Label, string Page)[]
+        {
+            ("Buses", "/Admin/Buses/Index"),
+            ("Stops", "/Admin/Stops/Index"),
+            ("Routes", "/Admin/Routes/Index"),
+            ("Drivers", "/Admin/Drivers/Index")
+        }),
+        (Heading: "Privacy", Links: new (string Label, string Page)[]
+        {
+            ("Access audit", "/Admin/Audit"),
+            ("Retention", "/Admin/Retention")
+        })
+    };
+}
+<nav class="admin-navigation" aria-label="Admin navigation">
+    @foreach (var group in groups)
+    {
+        <div class="admin-navigation__group">
+            <p>@group.Heading</p>
+            <ul>
+                @foreach (var link in group.Links)
+                {
+                    var isCurrent = string.Equals(currentPage, link.Page, StringComparison.OrdinalIgnoreCase);
+                    var isSection = link.Page != "/Admin/Index" && link.Page.EndsWith("/Index", StringComparison.Ordinal)
+                        && currentPage.StartsWith(link.Page[..^"Index".Length], StringComparison.OrdinalIgnoreCase);
+                    <li><a asp-page="@link.Page" aria-current="@(isCurrent ? "page" : isSection ? "location" : null)">@link.Label</a></li>
+                }
+            </ul>
+        </div>
+    }
+</nav>

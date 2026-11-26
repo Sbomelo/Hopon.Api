@@ -129,7 +129,7 @@ public class TokenSeparationTests
     {
         using var app = new StaffApplication();
         using var client = app.NewClient();
-        var token = CreateToken(app, "Passenger");
+        var (_, token) = await app.CreatePassengerAsync("+27600101001");
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/trips/my-trips?access_token=" + token)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsync("/hubs/trip/negotiate?negotiateVersion=1&access_token=" + token, null)).StatusCode);
         var (_, driverToken) = await app.CreateDriverAsync("driver-query-test");
@@ -148,15 +148,17 @@ public class TokenSeparationTests
         var options = app.Services.GetRequiredService<IOptionsMonitor<JwtBearerOptions>>().Get(JwtBearerDefaults.AuthenticationScheme);
         Assert.Equal(TimeSpan.FromMinutes(1), options.TokenValidationParameters.ClockSkew);
         var expiry = expired ? PastExpiry : FutureExpiry;
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateToken(app, "Passenger", expiry, wrongKey));
+        var (passenger, _) = await app.CreatePassengerAsync("+27600101002");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateToken(app, "Passenger", expiry, wrongKey, passenger));
         Assert.Equal(expected, (await client.GetAsync("/api/trips/my-trips")).StatusCode);
     }
 
-    private static string CreateToken(StaffApplication app, string? role, DateTime? expiry = null, bool wrongKey = false)
+    private static string CreateToken(StaffApplication app, string? role, DateTime? expiry = null, bool wrongKey = false, User? passenger = null)
     {
         var config = app.Services.GetRequiredService<IConfiguration>().GetSection("Jwt");
-        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "1") };
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, (passenger?.Id ?? 1).ToString()) };
         if (role != null) claims.Add(new Claim(ClaimTypes.Role, role));
+        if (passenger is not null) claims.Add(new Claim("phoneNumber", passenger.PhoneNumber));
         var key = wrongKey ? "Different-test-only-key-at-least-32-characters" : config["Key"]!;
         return new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(
             issuer: config["Issuer"], audience: config["Audience"], claims: claims,
